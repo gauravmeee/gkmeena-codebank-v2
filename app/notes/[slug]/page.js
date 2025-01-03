@@ -68,7 +68,7 @@ export default async function FolderPage({ params }) {
         notes.sort((a, b) => b.createdDate - a.createdDate);
 
         return (
-            <div className="container mx-auto p-4 lg:px-60">
+            <div className="max-w-full mx-auto xsm:p-6 sm:p-10 md:px-14">
                 <h1 className="text-4xl font-bold mb-8 text-center">{params.slug} Notes</h1>
                 
                 <div className="flex flex-col gap-8">
