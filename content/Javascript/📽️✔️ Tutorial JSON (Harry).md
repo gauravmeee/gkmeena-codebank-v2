@@ -1,3 +1,7 @@
+---
+slug : javascript-json-tutorial-notes
+---
+
 # [JSON Tutorial in Hindi 🔥🔥](https://youtu.be/whNFPBEI-wM)
 
 Earlier XML is used for APIs

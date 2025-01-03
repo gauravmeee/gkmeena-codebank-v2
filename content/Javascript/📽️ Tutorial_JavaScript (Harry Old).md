@@ -1,3 +1,7 @@
+---
+slug : javascript-complete-tutorial-notes
+---
+
 # [JavaScript Tutorial In Hindi](https://youtu.be/hKB-YGF14SY)
 
 

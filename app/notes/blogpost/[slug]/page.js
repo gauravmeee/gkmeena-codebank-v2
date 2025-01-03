@@ -23,7 +23,6 @@ export default async function BlogPost({ params }) {
         const contentDir = path.join(process.cwd(), 'content');
         let matchedContent = null;
 
-        // Check if content directory exists
         try {
             await fs.access(contentDir);
         } catch {
@@ -47,7 +46,6 @@ export default async function BlogPost({ params }) {
                         const content = await fs.readFile(subFilePath, 'utf-8');
                         const { data } = matter(content);
                         
-                        // Use filename as slug if not present in frontmatter
                         const fileSlug = data.slug || subFile.replace('.md', '');
                         
                         if (fileSlug === params.slug) {
@@ -63,7 +61,6 @@ export default async function BlogPost({ params }) {
                     const content = await fs.readFile(filePath, 'utf-8');
                     const { data } = matter(content);
                     
-                    // Use filename as slug if not present in frontmatter
                     const fileSlug = data.slug || file.replace('.md', '');
                     
                     if (fileSlug === params.slug) {
@@ -87,7 +84,13 @@ export default async function BlogPost({ params }) {
         }
 
         const { content, data } = matter(matchedContent.content);
-        data.slug = data.slug || matchedContent.filename.replace('.md', '');
+        
+        // Use filename without extension as fallback for both slug and title
+        const baseFilename = matchedContent.filename.replace('.md', '');
+        data.slug = data.slug || baseFilename;
+        data.title = data.title || baseFilename.split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
         
         const stats = await fs.stat(matchedContent.filePath);
         const createdDate = stats.birthtime.toLocaleDateString();
@@ -95,7 +98,7 @@ export default async function BlogPost({ params }) {
         const processor = unified()
             .use(remarkParse)
             .use(remarkRehype)
-            .use(rehypeDocument, { title: data.title || 'Blog Post' })
+            .use(rehypeDocument, { title: data.title })
             .use(rehypeFormat)
             .use(rehypeStringify)
             .use(rehypeSlug)

@@ -1,8 +1,6 @@
 ---
-title: 📽️✔️ Tutorial_Express (Harry)
+slug : express-complete-tutorial-notes
 ---
-
-
 
 # [ Express JS Tutorial in Hindi 🔥✌](https://youtu.be/7H_QH9nipNs)
 

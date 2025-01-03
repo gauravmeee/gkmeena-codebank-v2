@@ -1,3 +1,6 @@
+---
+slug : mysql-basic-commands
+---
 
 Data Definition Language (DDL): Defines and manages the structure of database objects.
 ```mysql

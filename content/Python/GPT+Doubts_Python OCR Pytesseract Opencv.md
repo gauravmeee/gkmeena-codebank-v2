@@ -1,3 +1,6 @@
+---
+slug : python-ocr-pytesseract-opencv-doubts-gpt-notes
+---
 
 ### `pytesseract.image_to_string`
 

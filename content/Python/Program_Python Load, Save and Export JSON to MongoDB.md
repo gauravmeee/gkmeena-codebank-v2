@@ -1,3 +1,6 @@
+---
+slug : python-json-operations-notes
+---
 
 ## Principle 6 Table Implementation
 

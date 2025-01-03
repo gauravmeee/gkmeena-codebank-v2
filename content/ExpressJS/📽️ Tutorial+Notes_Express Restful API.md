@@ -1,5 +1,5 @@
 ---
-title: 📽️ Tutorial+Notes_Express Restful API
+slug : express-restful-api
 ---
 
 # [Building REST API's using Node and Express.js](https://www.youtube.com/watch?v=uNCrMvkPUAE&ab_channel=PiyushGarg)

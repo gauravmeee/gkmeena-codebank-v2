@@ -1,3 +1,6 @@
+---
+slug : react-my-practical-doubts-notes
+---
 
 ---
 

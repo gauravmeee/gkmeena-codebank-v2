@@ -1,3 +1,6 @@
+---
+slug : react-redux-tutorial-notes
+---
 
 # [React Redux Tutorial | Learn Redux from Scratch](https://youtu.be/dOkkHHuFxjM)
 

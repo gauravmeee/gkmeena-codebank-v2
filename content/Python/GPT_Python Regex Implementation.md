@@ -1,3 +1,6 @@
+---
+slug : python-regex-implementation-gpt-notes
+---
 
 The logic of writing a regex (regular expression) formula lies in understanding **patterns** in the data you want to match. Here’s a step-by-step guide:
 

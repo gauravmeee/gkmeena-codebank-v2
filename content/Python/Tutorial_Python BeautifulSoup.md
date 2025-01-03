@@ -1,3 +1,7 @@
+---
+slug : python-beautifulsoup-tutorial-notes
+---
+
 **BeautifulSoup** - Python package for parsing HTML and XML documents
 
 [BS4 Documentation](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)

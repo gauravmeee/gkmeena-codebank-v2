@@ -1,3 +1,6 @@
+---
+slug : mongodb-complete-tutorial-notes
+---
 
 # [MongoDB Tutorial in 1 Hour (2024) 🍃](https://www.youtube.com/watch?v=J6mDkcqU_ZE&ab_channel=CodeWithHarry)
 Manual 👉 [MongoDB Manual](https://www.mongodb.com/docs/manual/crud/)

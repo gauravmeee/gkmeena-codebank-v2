@@ -1,3 +1,6 @@
+---
+slug : react-complete-tutorial-notes
+---
 
 # [React Tutorial in Hindi 🔥🔥](https://youtu.be/RGKi6LSPDLU)
 

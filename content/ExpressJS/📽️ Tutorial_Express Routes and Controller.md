@@ -1,5 +1,5 @@
 ---
-title: 📽️ Tutorial_Express Routes and Controller
+slug : express-routes-controller
 ---
 
 --- 

@@ -1,3 +1,7 @@
+---
+slug : python-pandas-tutorial-notes
+---
+
 # Python Pandas Tutorial
 
 ```

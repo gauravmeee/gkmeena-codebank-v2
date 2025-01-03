@@ -1,3 +1,7 @@
+---
+slug : javascript-import-export-notes
+---
+
 **Default Import Export :**
 
 ES6 Syntax (Preferred for Modern JavaScript)

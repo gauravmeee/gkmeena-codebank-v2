@@ -1,3 +1,7 @@
+---
+slug : python-important-libraries-functions-gpt-notes
+---
+
 # Python Libraries Function
 - [Pandas](#pandas)
 - [Requests](#Requests)

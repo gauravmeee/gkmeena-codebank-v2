@@ -1,3 +1,7 @@
+---
+slug : javascript-asynchronous-programming-gpt-notes
+---
+
 The comparison and notes on **`async/await`** and **Promises** would typically fall under the following topics:
 
 # **1. JavaScript Asynchronous Programming**

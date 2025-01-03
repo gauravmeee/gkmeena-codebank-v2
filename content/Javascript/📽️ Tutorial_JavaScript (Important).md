@@ -1,3 +1,6 @@
+---
+slug : javascript-important-concepts
+---
 
 # [Map, Filter & Reduce in JavaScript | JavaScript Tutorial in Hindi #20 (Harry)](https://www.youtube.com/watch?v=bAUMuuRH99o&ab_channel=CodeWithHarry)
 

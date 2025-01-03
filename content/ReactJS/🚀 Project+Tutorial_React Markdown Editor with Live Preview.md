@@ -1,3 +1,6 @@
+---
+slug : react-project-markdown-editor-tutorial-notes
+---
 
 # [React Markdown Editor](https://www.youtube.com/watch?v=x5JdT5KJBzw&pp=ygUVcmVhY3QgbWFya2Rvd24gZWRpdG9y)
 

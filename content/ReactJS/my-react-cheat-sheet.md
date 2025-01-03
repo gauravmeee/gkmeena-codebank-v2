@@ -1,3 +1,6 @@
+---
+slug : react-cheat-sheet
+---
 
 Hooks, Props, State
 

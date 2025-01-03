@@ -1,3 +1,7 @@
+---
+slug : python-jupyter-tutorial-notes
+---
+
 # Jupyter
 
 - **Jupyter Notebook :** a simple, easy-to-use interface for individual notebook documents.

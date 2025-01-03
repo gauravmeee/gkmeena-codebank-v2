@@ -1,3 +1,7 @@
+---
+slug : javascript-higher-order-methods-gpt-notes
+---
+
 A **higher-order method** in JavaScript is a function that either:
 
 1. **Takes another function as an argument**, or

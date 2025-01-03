@@ -1,8 +1,6 @@
 ---
-title: 🚀 Project_Express Simple API Server (Infollion Task)
-slug: gaurav-meena
+slug : express-project-simple-api-server
 ---
-
 
 # Task 2
 

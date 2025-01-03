@@ -29,7 +29,6 @@ export default async function FolderPage({ params }) {
             notFound();
         }
 
-        // Process files
         const notesPromises = markdownFiles.map(async (file) => {
             const filePath = path.join(folderPath, file);
             
@@ -38,9 +37,18 @@ export default async function FolderPage({ params }) {
                 const { data } = matter(fileContent);
                 const stats = await fs.stat(filePath);
 
+                // Get base filename without extension
+                const baseFilename = file.replace('.md', '');
+                
+                // Format filename as title (capitalize words and replace hyphens with spaces)
+                const formattedTitle = baseFilename.split('-').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
+
                 return {
                     ...data,
-                    slug: data.slug || file.replace('.md', ''),
+                    slug: data.slug || baseFilename,
+                    title: data.title || formattedTitle,
                     filename: file,
                     createdDate: stats.birthtime,
                 };

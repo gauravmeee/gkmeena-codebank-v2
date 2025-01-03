@@ -1,3 +1,7 @@
+---
+slug : react-project-cardsui-tutorial-notes
+---
+
 # [How to Create React Card UX Component with Bootstrap - React Project](https://youtu.be/rH9jM-8hAD8)
 
 ## 1. Set Up the React App

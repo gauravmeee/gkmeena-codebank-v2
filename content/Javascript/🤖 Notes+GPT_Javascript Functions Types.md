@@ -1,4 +1,6 @@
-
+---
+slug : javascript-function-types-gpt-notes
+---
 
 # Different types of Functions in Java Script
 

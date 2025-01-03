@@ -1,3 +1,6 @@
+---
+slug : react-project-notes-app-tutorial-notes
+---
 
 # [# Build a Notes App with React.js for Beginners (James Grimshaw)](https://www.youtube.com/watch?v=ulOKYl5sHGk&ab_channel=JamesGrimshaw)
 

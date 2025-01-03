@@ -1,3 +1,6 @@
+---
+slug : mysql-important-queries-gpt-notes
+---
 
 #### Largest Value
 

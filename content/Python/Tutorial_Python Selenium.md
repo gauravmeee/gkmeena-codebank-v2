@@ -1,3 +1,7 @@
+---
+slug : python-selenium-tutorial-notes
+---
+
 [Selenium Documentation](https://selenium-python.readthedocs.io/getting-started.html#simple-usage)
 
 # Structured roadmap to learn python
