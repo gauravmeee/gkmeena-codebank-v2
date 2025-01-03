@@ -54,27 +54,27 @@ const Navbar = () => {
       />
             <div className="container mx-auto flex justify-between items-center">
                 <Link href={"/"}><div className="text-lg font-bold">
-                    HarryBlog
+                    GKmeena Notes
                 </div></Link>
+                
+                {/* Desktop Navbar Items */}
                 <div className="hidden md:flex space-x-4 items-center">
                     <Link href="/" className="hover:scale-105 hover:font-semibold transition-transform duration-300"> Home
                     </Link>
-                    <Link href="/about" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                    {/* <Link href="/notes" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                        Notes
+                    </Link> */}
+                    {/* <Link href="/about" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
                         About
-                    </Link>
-                    <Link href="/blog" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
-                        Blog
-                    </Link>
-                    <Link href="/contact" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
-                        Contact
-                    </Link>
+                    </Link> */}
                     <div className='flex items-center'>
-                        <Button className="mx-1" variant="outline">Login</Button>
-                        <Button className="mx-1" variant="outline">Signup</Button>
+                        {/* <Button className="mx-1" variant="outline">Login</Button>
+                        <Button className="mx-1" variant="outline">Signup</Button> */}
                         <ModeToggle />
                     </div>
                 </div>
 
+                {/* Mobile Navbar Items */}
                 <div className="md:hidden">
                         <span className="mx-2"> 
                             <ModeToggle />
@@ -92,18 +92,16 @@ const Navbar = () => {
                                     <div className="flex flex-col gap-6">
                                         <Link href="/"> Home
                                         </Link>
-                                        <Link href="/about">
+                                        {/* <Link href="/notes">
+                                            Notes
+                                        </Link> */}
+                                        {/* <Link href="/about">
                                             About
-                                        </Link>
-                                        <Link href="/blog">
-                                            Blog
-                                        </Link>
-                                        <Link href="/contact">
-                                            Contact
-                                        </Link>
+                                        </Link> */}
                                         <div>
-                                            <Button className="mx-1 text-xs" variant="outline">Login</Button>
-                                            <Button className="mx-1 text-xs" variant="outline">Signup</Button>
+                                            {/* <Button className="mx-1 text-xs" variant="outline">Login</Button>
+                                            <Button className="mx-1 text-xs" variant="outline">Signup</Button> */}
+                                            <ModeToggle />
 
                                         </div>
 
