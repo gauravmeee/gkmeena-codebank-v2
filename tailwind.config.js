@@ -64,9 +64,9 @@ module.exports = {
 				'xsm': '310px', // grid-2
 				'sm': '500px', // grid-3
 				'md': '740px', // grid-4
-				'lg': '900px', // grid-5
-				'xl': '1130px', // grid-6
-				'2xl': '1300px', // grid-7
+				'lg': '950px', // grid-5
+				'xl': '1200px', // grid-6
+				'2xl': '1450px', // grid-7
 			  }
 		}
 	},
