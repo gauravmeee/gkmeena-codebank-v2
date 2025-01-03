@@ -35,7 +35,7 @@ const FolderGrid = () => {
   return (
     // note in tailwind.config.js, xsm, sm, lg, xl, 2x are redefined
     <div className="max-w-full mx-auto p-6 px-14">
-      <div className="grid grid-cols-1 xsm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8">
+      <div className="grid grid-cols-1 xsm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8">
         {folders.map((folder, index) => (
           <Link key={folder.slug || index} href={`/notes/${folder.slug}`} >
           <div className="rounded-lg shadow-md overflow-hidden dark:border-2">

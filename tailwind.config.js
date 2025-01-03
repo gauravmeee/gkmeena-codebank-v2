@@ -65,8 +65,8 @@ module.exports = {
 				'sm': '500px', // grid-3
 				'md': '740px', // grid-4
 				'lg': '900px', // grid-5
-				'xl': '1280px',
-				'2xl': '1536px',
+				'xl': '1130px', // grid-6
+				'2xl': '1300px', // grid-7
 			  }
 		}
 	},
