@@ -37,8 +37,8 @@ const FolderGrid = () => {
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-8">
         {folders.map((folder, index) => (
-          <Link href={`/notes/${folder.slug}`} >
-          <div key={index} className="rounded-lg shadow-md overflow-hidden dark:border-2">
+          <Link key={folder.slug || index} href={`/notes/${folder.slug}`} >
+          <div className="rounded-lg shadow-md overflow-hidden dark:border-2">
             <div className="w-full h-48 bg-gray-300 flex justify-center items-center">
               {folder.image ? (
                 <div className="relative w-full h-full">
