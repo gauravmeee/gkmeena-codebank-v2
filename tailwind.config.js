@@ -58,7 +58,16 @@ module.exports = {
 					'4': 'hsl(var(--chart-4))',
 					'5': 'hsl(var(--chart-5))'
 				}
-			}
+			},
+
+			screens: {
+				'xsm': '310px', // grid-2
+				'sm': '500px', // grid-3
+				'md': '740px', // grid-4
+				'lg': '900px', // grid-5
+				'xl': '1280px',
+				'2xl': '1536px',
+			  }
 		}
 	},
 	plugins: [require("tailwindcss-animate"),
