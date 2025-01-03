@@ -1,7 +1,5 @@
 ---
-title: Express Routes and Controller
-description: This is a note focused on route and controller made from youtube tutorials
-author: Gkmeena (from Tutorial)
+title: 📽️ Tutorial_Express Routes and Controller
 ---
 
 --- 

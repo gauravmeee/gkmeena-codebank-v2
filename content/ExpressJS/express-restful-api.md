@@ -1,7 +1,5 @@
 ---
-title: Express Restful API
-description: This is a note focused on restful API made from youtube tutorials
-author: Gkmeena (from Tutorial)
+title: 📽️ Tutorial+Notes_Express Restful API
 ---
 
 # [Building REST API's using Node and Express.js](https://www.youtube.com/watch?v=uNCrMvkPUAE&ab_channel=PiyushGarg)

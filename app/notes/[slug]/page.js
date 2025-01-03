@@ -1,73 +1,101 @@
 // app/notes/[slug]/page.js
-import React from 'react';  
+import React from 'react';
 import Link from 'next/link';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
-import matter from 'gray-matter'; 
+import matter from 'gray-matter';
+import { notFound } from 'next/navigation';
 
-export default function FolderPage({ params }) {
-  const folderPath = path.join(process.cwd(), 'content', params.slug);
-  
-  // Read files in the folder and filter for .md files only
-  const files = fs.readdirSync(folderPath)
-    .filter(filename => filename.endsWith('.md'));
+export default async function FolderPage({ params }) {
+    if (!params?.slug) {
+        notFound();
+    }
 
-  // Process files
-  const notes = files.map((file) => {
-    // Construct the full file path
-    const filePath = path.join(folderPath, file);
+    try {
+        const folderPath = path.join(process.cwd(), 'content', params.slug);
+        
+        try {
+            await fs.access(folderPath);
+        } catch {
+            console.error(`Folder not found: ${params.slug}`);
+            notFound();
+        }
 
-    // Read file content
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const files = await fs.readdir(folderPath);
+        const markdownFiles = files.filter(file => file.endsWith('.md'));
 
-    // Parse frontmatter using matter
-    const { data } = matter(fileContent);
+        if (markdownFiles.length === 0) {
+            console.error(`No markdown files found in folder: ${params.slug}`);
+            notFound();
+        }
 
-    // Get file creation time
-    const stats = fs.statSync(filePath);
-    const createdDate = stats.birthtime.toLocaleDateString();
-    
-    return {
-      ...data,
-      slug: file.replace('.md', ''), // Remove .md extension for the slug
-      filename: file,
-      createdDate, // Include the file's created date
-    };
-  });
+        // Process files
+        const notesPromises = markdownFiles.map(async (file) => {
+            const filePath = path.join(folderPath, file);
+            
+            try {
+                const fileContent = await fs.readFile(filePath, 'utf-8');
+                const { data } = matter(fileContent);
+                const stats = await fs.stat(filePath);
 
-  return (
-    <div className="container mx-auto p-4 lg:px-60">
-      <h1 className="text-4xl font-bold mb-8 text-center">{params.slug} Notes</h1>
-      
-      <div className="flex flex-col gap-8">
-        {notes.map((note, index) => (
-          <Link key={index} href={`/notes/blogpost/${note.slug}`}>
-            <div className="rounded-lg shadow-md overflow-hidden dark:border-2 hover:shadow-lg transition-shadow">
-              <div className="p-4">
-                <h2 className="text-2xl font-bold mb-2">{note.title}</h2>
+                return {
+                    ...data,
+                    slug: data.slug || file.replace('.md', ''),
+                    filename: file,
+                    createdDate: stats.birthtime,
+                };
+            } catch (error) {
+                console.error(`Error processing file ${file}:`, error);
+                return null;
+            }
+        });
+
+        const notes = (await Promise.all(notesPromises)).filter(Boolean);
+
+        if (notes.length === 0) {
+            console.error(`No valid notes found in folder: ${params.slug}`);
+            notFound();
+        }
+
+        notes.sort((a, b) => b.createdDate - a.createdDate);
+
+        return (
+            <div className="container mx-auto p-4 lg:px-60">
+                <h1 className="text-4xl font-bold mb-8 text-center">{params.slug} Notes</h1>
                 
-                {note.description && (
-                  <p className="mb-4">{note.description}</p>
-                )}
-                
-                <div className="text-sm mb-4">
-                  {note.author && <span>By {note.author}</span>}
-                  {note.createdDate && (
-                    <>
-                      {note.author && ' | '}
-                      <span>{new Date(note.createdDate).toLocaleDateString('en-GB', { 
-                        day: '2-digit', 
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}</span>
-                    </>
-                  )}
+                <div className="flex flex-col gap-8">
+                    {notes.map((note, index) => (
+                        <Link key={index} href={`/notes/blogpost/${note.slug}`}>
+                            <div className="rounded-lg shadow-md overflow-hidden dark:border-2 hover:shadow-lg transition-shadow">
+                                <div className="p-4">
+                                    <h2 className="text-2xl font-bold mb-2">{note.title}</h2>
+                                    
+                                    {note.description && (
+                                        <p className="mb-4">{note.description}</p>
+                                    )}
+                                    
+                                    <div className="text-sm mb-4">
+                                        {note.author && <span>By {note.author}</span>}
+                                        {note.createdDate && (
+                                            <>
+                                                {note.author && ' | '}
+                                                <span>{new Date(note.createdDate).toLocaleDateString('en-GB', { 
+                                                    day: '2-digit', 
+                                                    month: 'long', 
+                                                    year: 'numeric' 
+                                                })}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
                 </div>
-              </div>
             </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+        );
+    } catch (error) {
+        console.error('Error processing folder page:', error);
+        notFound();
+    }
 }

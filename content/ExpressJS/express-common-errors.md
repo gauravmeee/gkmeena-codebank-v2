@@ -1,7 +1,5 @@
 ---
-title: Common Errors in Express.
-description: This is the compilation common errors during development of express js and its solution
-author: Gkmeena
+title: Errors_Express Solution
 ---
 
 **Error:** ❌

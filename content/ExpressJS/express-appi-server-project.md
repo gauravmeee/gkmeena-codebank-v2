@@ -1,7 +1,6 @@
 ---
-title: Express API Server Project
-description: This is a notes, to build specific express api server
-author: Gkmeena (from GPT)
+title: 🚀 Project_Express Simple API Server (Infollion Task)
+slug: gaurav-meena
 ---
 
 

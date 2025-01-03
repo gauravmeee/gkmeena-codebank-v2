@@ -1,7 +1,5 @@
 ---
-title: Express Basic Template
-description: This is a note quickly tells how express app format.
-author: Gkmeena
+title: Notes_Express Basic Template and dotenv
 ---
 
 ## Express
