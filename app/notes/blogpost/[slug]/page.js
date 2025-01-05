@@ -13,6 +13,7 @@ import rehypePrettyCode from "rehype-pretty-code";
 import { transformerCopyButton } from '@rehype-pretty/transformers';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSlug from 'rehype-slug';
+import remarkGfm from 'remark-gfm'; // for rendering markdown table correctly
 
 export default async function BlogPost({ params }) {
     if (!params?.slug) {
@@ -97,6 +98,7 @@ export default async function BlogPost({ params }) {
 
         const processor = unified()
             .use(remarkParse)
+            .use(remarkGfm) // Add GitHub Flavored Markdown support here, for rendering markdown table correctly
             .use(remarkRehype)
             .use(rehypeDocument, { title: data.title })
             .use(rehypeFormat)
