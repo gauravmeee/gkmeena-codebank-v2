@@ -4,7 +4,7 @@ export default function InProgress() {
       <div className="min-h-screen bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-center text-gray-900 dark:text-white">
         <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-xl max-w-md mx-auto">
           <h1 className="text-4xl font-semibold mb-6">This Page is In Progress</h1>
-          <p className="text-lg mb-6">We're working on it! Stay tuned for updates.</p>
+          <p className="text-lg mb-6">We&apos;re working on it! Stay tuned for updates.</p>
           <div className="mt-6">
             <a href="/" className="bg-red-500 text-white py-2 px-6 rounded-lg hover:bg-red-400 transition">
               Go Back to Home
