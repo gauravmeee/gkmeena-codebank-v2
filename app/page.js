@@ -1,73 +1,55 @@
-import React from 'react';
-import { buttonVariants } from '@/components/ui/button';
-import Link from 'next/link';
-import Image from 'next/image';
-import fs from 'fs';
-import path from 'path';
+import Head from 'next/head';
 
-const notesDir = path.join(process.cwd(), 'content');
-
-const getFolderImage = (folderName) => {
-  const imagePath = path.join(process.cwd(), 'public', 'images', `${folderName.toLowerCase()}.png`);
-  return fs.existsSync(imagePath) ? `/images/${folderName.toLowerCase()}.png` : null;
-};
-
-// Get folders and count .md files inside them
-const getFolders = () => {
-  return fs.readdirSync(notesDir, { withFileTypes: true })
-    .filter(dir => dir.isDirectory())
-    .map(folder => {
-      const folderPath = path.join(notesDir, folder.name);
-      const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.md'));
-      const fileCount = files.length;
-      return {
-        name: folder.name,
-        slug: folder.name,
-        image: getFolderImage(folder.name),
-        fileCount
-      };
-    });
-};
-
-const folders = getFolders();
-
-const FolderGrid = () => {
+export default function Home() {
   return (
-    // note in tailwind.config.js, xsm, sm, lg, xl, 2x are redefined
-    <div className="max-w-full mx-auto p-6 md:px-14">
-      <div className="grid grid-cols-1 xsm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8">
-        {folders.map((folder, index) => (
-          <Link key={folder.slug || index} href={`/notes/${folder.slug}`} >
-          <div className="rounded-lg shadow-md overflow-hidden dark:border-2">
-            <div className="w-full h-48 bg-gray-300 flex justify-center items-center">
-              {folder.image ? (
-                <div className="relative w-full h-full">
-                  <Image
-                    src={folder.image}
-                    alt={folder.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <span className="text-xl font-bold">{folder.name}</span>
-              )}
-            </div>
-            
-            <div className="p-4">
-              <h2 className="text-2xl font-bold mb-2">{folder.name}</h2>
-              {folder.fileCount > 0 ? (
-                  <p className="text-sm text-gray-600">{folder.fileCount} {folder.fileCount > 1 ? 'Notes' : 'Note'}</p>
-                ) : (
-                  <p className="text-sm text-gray-600">No Notes</p>
-                )}
-            </div>
-          </div>
-        </Link>
-        ))}
+    <>
+      <Head>
+        <title>HackDeck - Your Coding Hub</title>
+      </Head>
+
+      <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+  {/* Hero Section */}
+  <section className="text-center py-10">
+    <div className="container mx-auto">
+      <h2 className="text-4xl font-semibold mb-4">Welcome to HackDeck</h2>
+      <p className="text-xl mb-6">Your ultimate platform for coding services, contests, job posts, and notes!</p>
+      <a href="#services" className="bg-red-500 text-white py-2 px-6 rounded-lg hover:bg-red-400 transition">Explore Services</a>
+    </div>
+  </section>
+
+  {/* Services Section */}
+  <section id="services" className="py-10 flex-grow">
+    <div className="container mx-auto text-center">
+      <h2 className="text-3xl font-semibold mb-10">Our Services</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-2xl transition">
+          <h3 className="text-xl font-semibold mb-4">Programming Services</h3>
+          <p>Get professional coding services for your projects.</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-2xl transition">
+          <h3 className="text-xl font-semibold mb-4">Upcoming Contests</h3>
+          <p>Stay updated with the latest coding contests.</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-2xl transition">
+          <h3 className="text-xl font-semibold mb-4">Job Postings</h3>
+          <p>Find the best job opportunities in the tech industry.</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-2xl transition">
+          <h3 className="text-xl font-semibold mb-4">Notes & Resources</h3>
+          <p>Access study notes, tutorials, and resources to boost your skills.</p>
+        </div>
       </div>
     </div>
-  );
-};
+  </section>
 
-export default FolderGrid;
+  {/* Footer */}
+  <footer className="bg-gray-800 dark:bg-gray-700 text-white py-6 text-center pt-10">
+    <p>&copy; 2025 HackDeck. All Rights Reserved.</p>
+  </footer>
+</div>
+
+
+
+    </>
+  );
+}

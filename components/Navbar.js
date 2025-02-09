@@ -1,7 +1,6 @@
 "use client"
 import React from 'react'
 import Link from 'next/link';
-import { Button } from "@/components/ui/button"
 import {
     Sheet,
     SheetContent,
@@ -53,20 +52,33 @@ const Navbar = () => {
         onLoaderFinished={() => setProgress(0)}
       />
             <div className="container mx-auto flex justify-between items-center">
-                <Link href={"/"}><div className="text-lg font-bold">
-                    GKmeena Notes
-                </div></Link>
+            <Link href={"/"}>
+              <div className="flex items-center space-x-2"> {/* Flex container to align items horizontally */}
+                <img 
+                  src="/images/gkmeena.png"  // Path to your logo image
+                  alt="Logo"
+                  className="w-20 h-15"  // Adjust the size of the logo (adjust as needed)
+                />
+                <div className="text-2xl font-bold">
+                  Hack⛩Desk
+                </div>
+              </div>
+            </Link>
                 
                 {/* Desktop Navbar Items */}
                 <div className="hidden md:flex space-x-4 items-center">
-                    <Link href="/" className="hover:scale-105 hover:font-semibold transition-transform duration-300"> Home
+                    <Link href="/" className="hover:scale-105 hover:font-semibold transition-transform duration-300"> 
+                        Home
                     </Link>
-                    {/* <Link href="/notes" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                    <Link href="/notes" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
                         Notes
-                    </Link> */}
-                    {/* <Link href="/about" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
-                        About
-                    </Link> */}
+                    </Link>
+                    <Link href="/contests" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                        Contests
+                    </Link>
+                    <Link href="/jobs" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                        Jobs
+                    </Link>
                     <div className='flex items-center'>
                         {/* <Button className="mx-1" variant="outline">Login</Button>
                         <Button className="mx-1" variant="outline">Signup</Button> */}
@@ -87,17 +99,22 @@ const Navbar = () => {
                         </SheetTrigger>
                         <SheetContent>
                             <SheetHeader>
-                                <SheetTitle className="font-bold my-4">Gkmeena Notes</SheetTitle>
+                                <SheetTitle className="font-bold my-4">HackDeck</SheetTitle>
                                 <SheetDescription>
                                     <div className="flex flex-col gap-6">
-                                        <Link href="/"> Home
+                                        <Link href="/"> 
+                                            Home
                                         </Link>
-                                        {/* <Link href="/notes">
+                                        <Link href="/notes">
                                             Notes
-                                        </Link> */}
-                                        {/* <Link href="/about">
-                                            About
-                                        </Link> */}
+                                        </Link>
+                                        <Link href="/contests">
+                                            Contests
+                                        </Link>
+                                        <Link href="/jobs">
+                                            Jobs
+                                        </Link>
+                                        
                                         <div>
                                             {/* <Button className="mx-1 text-xs" variant="outline">Login</Button>
                                             <Button className="mx-1 text-xs" variant="outline">Signup</Button> */}
