@@ -41,11 +41,6 @@ export default function Home() {
       </div>
     </div>
   </section>
-
-  {/* Footer */}
-  <footer className="bg-gray-800 dark:bg-gray-700 text-white py-6 text-center pt-10">
-    <p>&copy; 2025 HelpDesk. All Rights Reserved.</p>
-  </footer>
 </div>
 
 
