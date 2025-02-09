@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>HackDeck - Your Coding Hub</title>
+        <title>HelpDesk- Your Coding Hub</title>
       </Head>
 
       <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
