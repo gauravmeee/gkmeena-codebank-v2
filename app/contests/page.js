@@ -43,7 +43,7 @@ const Contests = () => {
 
   return (
     <div className="container mx-auto p-6 backdrop-blur">
-      <h2 className="text-4xl font-semibold mb-4 text-center py-5">Upcoming Coding Contests</h2>
+      <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center py-5">Upcoming Contests</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {contests.map((contest) => {

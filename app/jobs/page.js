@@ -6,7 +6,7 @@ export default function InProgress() {
           <h1 className="text-4xl font-semibold mb-6">This Page is In Progress</h1>
           <p className="text-lg mb-6">We are working on it! Stay tuned for updates.</p>
           <div className="mt-6">
-            <a href="/" className="bg-blue-400 text-white py-2 px-6 rounded-lg hover:bg-red-400 transition">
+            <a href="/" className="bg-blue-400 text-white py-2 px-6 rounded-lg hover:bg-blue-500 transition">
               Go Back to Home
             </a>
           </div>

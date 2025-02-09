@@ -11,14 +11,14 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-10">
           <div className="container mx-auto">
-            <h2 className="text-4xl font-semibold mb-4">Welcome to HackDeck</h2>
-            <p className="text-xl mb-6">
+            <h2 className="text-2xl md:text-4xl font-semibold mb-4">Welcome to HackDeck</h2>
+            <p className="text-xl mb-6 mt-10">
               Your ultimate platform for coding services, contests, job posts,
               and notes!
             </p>
             <a
               href="#services"
-              className="bg-blue-400 text-white py-2 px-6 rounded-lg hover:bg-red-400 transition"
+              className="bg-blue-400 text-white py-2 px-6 rounded-lg hover:bg-blue-500 transition"
             >
               Explore Services
             </a>
