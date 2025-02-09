@@ -8,8 +8,8 @@ import path from 'path';
 const notesDir = path.join(process.cwd(), 'content');
 
 const getFolderImage = (folderName) => {
-  const imagePath = path.join(process.cwd(), 'public', 'images', `${folderName.toLowerCase()}.png`);
-  return fs.existsSync(imagePath) ? `/images/${folderName.toLowerCase()}.png` : null;
+  const imagePath = path.join(process.cwd(), 'public', 'assets/notes', `${folderName.toLowerCase()}.png`);
+  return fs.existsSync(imagePath) ? `/assets/notes/${folderName.toLowerCase()}.png` : null;
 };
 
 // Get folders and count .md files inside them
@@ -33,7 +33,8 @@ const folders = getFolders();
 
 const FolderGrid = () => {
   return (
-    // note in tailwind.config.js, xsm, sm, lg, xl, 2x are redefined
+    <>
+    <h2 className="text-4xl font-semibold mb-4 text-center py-5">Computer Engineering Notes</h2>
     <div className="max-w-full mx-auto p-6 md:px-14">
       <div className="grid grid-cols-1 xsm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8">
         {folders.map((folder, index) => (
@@ -67,6 +68,7 @@ const FolderGrid = () => {
         ))}
       </div>
     </div>
+    </>
   );
 };
 

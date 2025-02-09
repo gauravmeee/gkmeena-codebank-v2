@@ -109,11 +109,25 @@ export async function GET() {
             "contestDuration": "01:00 hours."
         },
         {
+            "platform": "LeetCode",
+            "contestName": "Biweekly Contest 151",
+            "contestLink": "https://leetcode.com/contest/biweekly-contest-151",
+            "startTime": "2025-02-16T20:00:00+0530",
+            "contestDuration": "1 hour 30 minutes"
+        },
+        {
             "platform": "CodeForces",
             "contestName": "Codeforces Round (Div. 2)",
             "contestLink": "https://codeforces.com/contests/2064",
             "startTime": "2025-02-16T20:05:00+0530",
             "contestDuration": "02:00 hours."
+        },
+        {
+            "platform": "LeetCode",
+            "contestName": "Weekly Contest 438",
+            "contestLink": "https://leetcode.com/contest/weekly-contest-438",
+            "startTime": "2025-02-17T08:00:00+0530",
+            "contestDuration": "1 hour 30 minutes"
         },
         {
             "platform": "CodeForces",

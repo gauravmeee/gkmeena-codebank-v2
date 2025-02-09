@@ -43,7 +43,15 @@ const Navbar = () => {
       }, 50);
     }, [])
     
-    
+    // Determine the title based on the pathname
+    const getTitle = () => {
+        if (pathname === "/") return "HELP⛩DESK";
+        if (pathname === "/notes") return "NOT☰S";
+        if (pathname === "/contests") return "C✪NTESTS";
+        if (pathname === "/jobs") return "JOB$";
+        return "HackDeck";  // Default fallback
+        }
+
     return (
         <nav className="p-4 bg-background/50 sticky top-0 backdrop-blur border-b z-10">
             <LoadingBar
@@ -55,12 +63,12 @@ const Navbar = () => {
             <Link href={"/"}>
               <div className="flex items-center space-x-2"> {/* Flex container to align items horizontally */}
                 <img 
-                  src="/images/gkmeena.png"  // Path to your logo image
+                  src="/assets/gkmeena.png"  // Path to your logo image
                   alt="Logo"
                   className="w-20 h-15"  // Adjust the size of the logo (adjust as needed)
                 />
                 <div className="text-2xl font-bold">
-                  Hack⛩Desk
+                {getTitle()} {/* Dynamic Title */}
                 </div>
               </div>
             </Link>

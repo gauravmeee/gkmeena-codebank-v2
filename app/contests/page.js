@@ -9,6 +9,7 @@ const Contests = () => {
 
   const apiUrl = '/contests/api'; // URL for the API
 
+
   // Fetch contests data
   useEffect(() => {
     const fetchContests = async () => {
@@ -41,13 +42,14 @@ const Contests = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl text-center mb-6">Upcoming Coding Contests</h1>
+    <div className="container mx-auto p-6 backdrop-blur">
+      <h2 className="text-4xl font-semibold mb-4 text-center py-5">Upcoming Coding Contests</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {contests.map((contest) => {
           const formattedDate = new Date(contest.startTime).toLocaleDateString('en-GB', {
             day: '2-digit',
+            weekday: 'short',
             month: 'short',
             year: 'numeric',
             hour: '2-digit',
@@ -55,7 +57,7 @@ const Contests = () => {
             hour12: true,
           });
 
-          const platformImage = `/assets/${contest.platform}.png`;
+          const platformImage = `/assets/contests/${contest.platform}.png`;
 
           return (
             <div key={contest.contestName} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">

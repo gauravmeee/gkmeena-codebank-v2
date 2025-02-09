@@ -1,12 +1,6 @@
-import Head from 'next/head';
-
 export default function InProgress() {
   return (
     <>
-      <Head>
-        <title>Page In Progress - HackDeck</title>
-      </Head>
-
       <div className="min-h-screen bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-center text-gray-900 dark:text-white">
         <div className="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-xl max-w-md mx-auto">
           <h1 className="text-4xl font-semibold mb-6">This Page is In Progress</h1>
