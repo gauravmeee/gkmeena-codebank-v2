@@ -17,33 +17,39 @@ import { usePathname } from 'next/navigation';
 
 const Navbar = () => {
     const [progress, setProgress] = useState(0);
+    const [isOpen, setIsOpen] = useState(false); // State for controlling the menu
     const pathname = usePathname();
 
     useEffect(() => {
-      setProgress(20);
+        setProgress(20);
 
-      setTimeout(() => {
-        setProgress(40);
-      }, 100);
+        setTimeout(() => {
+            setProgress(40);
+        }, 100);
 
-      setTimeout(() => {
-        setProgress(100);
-      }, 400);
+        setTimeout(() => {
+            setProgress(100);
+        }, 400);
 
     }, [pathname]);
 
     useEffect(() => {
-      setTimeout(() => {
-       setProgress(0);
-      }, 50);
+        setTimeout(() => {
+            setProgress(0);
+        }, 50);
     }, []);
-    
+
     const getTitle = () => {
         if (pathname === "/") return "HELP⚭DESK";
         if (pathname === "/notes") return "NOT☰S";
-        if (pathname === "/contests") return "C⊛NTESTS";
+        if (pathname === "/contests") return "C〄NTESTS";
         if (pathname === "/jobs") return "JOB↜";
         return "HackDeck";
+    };
+
+    // Function to close the menu
+    const handleLinkClick = () => {
+        setIsOpen(false);
     };
 
     return (
@@ -89,7 +95,7 @@ const Navbar = () => {
                     <span className="mx-2"> 
                         <ModeToggle />
                     </span>
-                    <Sheet>
+                    <Sheet open={isOpen} onOpenChange={setIsOpen}>
                         <SheetTrigger>
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
@@ -100,10 +106,10 @@ const Navbar = () => {
                                 <SheetTitle className="font-bold my-4">Menu</SheetTitle>
                                 <SheetDescription>
                                     <div className="flex flex-col gap-6">
-                                        <Link href="/"> Home </Link>
-                                        <Link href="/notes"> Notes </Link>
-                                        <Link href="/contests"> Contests </Link>
-                                        <Link href="/jobs"> Jobs </Link>
+                                        <Link href="/" onClick={handleLinkClick}> Home </Link>
+                                        <Link href="/notes" onClick={handleLinkClick}> Notes </Link>
+                                        <Link href="/contests" onClick={handleLinkClick}> Contests </Link>
+                                        <Link href="/jobs" onClick={handleLinkClick}> Jobs </Link>
                                         <div>
                                             <ModeToggle />
                                         </div>
