@@ -18,7 +18,7 @@ export default function Home() {
             </p>
             <a
               href="#services"
-              className="bg-red-500 text-white py-2 px-6 rounded-lg hover:bg-red-400 transition"
+              className="bg-blue-400 text-white py-2 px-6 rounded-lg hover:bg-red-400 transition"
             >
               Explore Services
             </a>
