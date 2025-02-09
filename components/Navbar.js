@@ -45,10 +45,10 @@ const Navbar = () => {
     
     // Determine the title based on the pathname
     const getTitle = () => {
-        if (pathname === "/") return "HELP⛩DESK";
+        if (pathname === "/") return "HELP𓊳DESK";
         if (pathname === "/notes") return "NOT☰S";
-        if (pathname === "/contests") return "C✪NTESTS";
-        if (pathname === "/jobs") return "JOB$";
+        if (pathname === "/contests") return "C⦿NTESTS";
+        if (pathname === "/jobs") return "JOB↜";
         return "HackDeck";  // Default fallback
         }
 
@@ -107,7 +107,7 @@ const Navbar = () => {
                         </SheetTrigger>
                         <SheetContent>
                             <SheetHeader>
-                                <SheetTitle className="font-bold my-4">HackDeck</SheetTitle>
+                                <SheetTitle className="font-bold my-4">Menu</SheetTitle>
                                 <SheetDescription>
                                     <div className="flex flex-col gap-6">
                                         <Link href="/"> 
