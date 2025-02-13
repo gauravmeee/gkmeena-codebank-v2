@@ -7,7 +7,7 @@ const Contests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const apiUrl = 'api/route.js/'; // URL for the API
+  const apiUrl = 'https://flask-contest-api.onrender.com/'; // URL for the API
 
 
   // Fetch contests data
