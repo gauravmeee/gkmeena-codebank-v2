@@ -1,5 +1,5 @@
-// app/api/contests/route.js
-
+// app/api/contests/api/route.js
+// Note: this was for testing purpose for Maual APi
 export async function GET() {
     // You can fetch data here from a database or an external API
     const contests = [

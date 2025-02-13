@@ -40,12 +40,18 @@ const Navbar = () => {
     }, []);
 
     const getTitle = () => {
-        if (pathname === "/") return "HELP⚭DESK";
-        if (pathname === "/notes") return "NOT☰S";
-        if (pathname === "/contests") return "C〄NTESTS";
-        if (pathname === "/jobs") return "JOB↜";
-        return "HackDeck";
+        if (pathname.startsWith("/notes")) return "Notes";
+        if (pathname.startsWith("/contests")) return "Contests";
+        if (pathname.startsWith("/jobs")) return "Jobs";
+        return "CodeBank";
     };
+
+    const getLogo = () => {
+        const paths = ["/notes", "/contests", "/jobs"];
+        return paths.some(path => pathname.startsWith(path)) ? "/assets/codebank.png" : "/assets/cb.png";
+    };
+    
+    
 
     // Function to close the menu
     const handleLinkClick = () => {
@@ -63,7 +69,7 @@ const Navbar = () => {
                 <Link href={"/"}>
                     <div className="flex items-center space-x-2">
                         <img 
-                            src="/assets/gkmeena.png"
+                            src={getLogo()}
                             alt="Logo"
                             className="w-20 h-15"
                         />

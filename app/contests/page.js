@@ -7,7 +7,7 @@ const Contests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const apiUrl = '/contests/api'; // URL for the API
+  const apiUrl = 'api/route.js/'; // URL for the API
 
 
   // Fetch contests data
@@ -57,7 +57,7 @@ const Contests = () => {
             hour12: true,
           });
 
-          const platformImage = `/assets/contests/${contest.platform}.png`;
+          const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
 
           return (
             <div key={contest.contestName} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">

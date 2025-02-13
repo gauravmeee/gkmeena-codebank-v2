@@ -4,14 +4,14 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>HelpDesk- Your Coding Hub</title>
+        <title> CodeBank- Your All in one Programming Resources</title>
       </Head>
 
       <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
         {/* Hero Section */}
         <section className="text-center py-10">
           <div className="container mx-auto">
-            <h2 className="text-2xl md:text-4xl font-semibold mb-4">Welcome to HackDeck</h2>
+            <h2 className="text-2xl md:text-4xl font-semibold mb-4">Welcome to CodeBank</h2>
             <p className="text-xl mb-6 mt-10">
               Your ultimate platform for coding services, contests, job posts,
               and notes!
