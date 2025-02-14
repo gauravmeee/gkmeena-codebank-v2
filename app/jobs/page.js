@@ -55,6 +55,7 @@ const JobsPage = () => {
               <p className="text-md text-gray-600 dark:text-gray-300">Company: {job.company}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Batch Eligible: {job.batch_eligible}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Location: {job.location}</p>
+              <p className="text-md text-gray-600 dark:text-gray-300">Date Posted: {job.date_posted}</p>
               
               <a
                 href={job.apply_link}
