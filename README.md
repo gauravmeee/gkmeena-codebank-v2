@@ -3,6 +3,20 @@
 
 **CodeBank** is a platform that allows users to access a collection of resources such as Notes, Contests, and Jobs. It provides an easy-to-use interface with seamless navigation, a clean design, and dynamic content fetching from APIs.
 
+
+## **CodeBank - Contest and Job Update Platform**
+
+**Technologies**: React, Next.js, Tailwind CSS, Flask, FastAPI, BeautifulSoup, Telethon
+
+- Developed a platform with **React** and **Next.js** that displays **Contest** and **Job** updates fetched from APIs.
+- Created a **Flask RESTful API** to scrape and provide **contest updates** from various coding platforms using **BeautifulSoup**.
+- Implemented a **FastAPI** server to scrape **job listings** from a **Telegram job update group** using **Telethon**.
+- Built a **dynamic theme toggle** feature to allow users to switch between light and dark modes.
+- Integrated a **loading bar** for smooth user experience while fetching dynamic data.
+- Ensured responsive design and optimized performance with **Tailwind CSS** and **React** components.
+- Led the API integration and scraping logic to provide real-time data to users.
+
+
 ## Features
 - **Notes**: Access a collection of programming notes to enhance your learning.
 - **Contests**: View upcoming coding contests from different platforms.
