@@ -40,7 +40,7 @@ const JobsPage = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="min-h-screen container mx-auto p-6">
       <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center">Job Updates</h2>
       {jobs.length === 0 ? (
         <p className="text-center text-lg text-gray-500">No jobs available at the moment.</p>
