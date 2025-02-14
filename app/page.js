@@ -30,22 +30,22 @@ export default function Home() {
             <h2 className="text-3xl font-semibold mb-10 text-gray-900 dark:text-white">Our Services</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               
-              <a href="/" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <a href="/" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg over:shadow-2xl hover:scale-105 transition-transform duration-200">
                 <h3 className="text-xl font-semibold mb-4">Programming Services</h3>
                 <p>Professional coding services for your projects.</p>
               </a>
 
-              <a href="/notes" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <a href="/notes" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg over:shadow-2xl hover:scale-105 transition-transform duration-200">
                 <h3 className="text-xl font-semibold mb-4 ">Notes & Resources</h3>
                 <p>Access study notes, tutorials, and more.</p>
               </a>
 
-              <a href="/contests" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <a href="/contests" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg over:shadow-2xl hover:scale-105 transition-transform duration-200">
                 <h3 className="text-xl font-semibold mb-4">Upcoming Contests</h3>
                 <p>Stay updated with the latest coding contests.</p>
               </a>
 
-              <a href="/jobs" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg">
+              <a href="/jobs" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg over:shadow-2xl hover:scale-105 transition-transform duration-200">
                 <h3 className="text-xl font-semibold mb-4">Job Postings</h3>
                 <p>Find the best tech job opportunities.</p>
               </a>

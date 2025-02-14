@@ -55,13 +55,14 @@ const JobsPage = () => {
               <p className="text-md text-gray-600 dark:text-gray-300">Company: {job.company}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Batch Eligible: {job.batch_eligible}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Location: {job.location}</p>
+              
               <a
                 href={job.apply_link}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300"
               >
-                Apply Here
+                Apply Link
               </a>
             </li>
           ))}
