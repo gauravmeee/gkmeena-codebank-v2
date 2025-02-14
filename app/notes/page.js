@@ -33,9 +33,8 @@ const folders = getFolders();
 
 const FolderGrid = () => {
   return (
-    <>
-    <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center py-5">Computer Notes</h2>
     <div className="max-w-full mx-auto p-6 md:px-14">
+    <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center">Revision Notes</h2>
       <div className="grid grid-cols-1 xsm:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8">
         {folders.map((folder, index) => (
           <Link key={folder.slug || index} href={`/notes/${folder.slug}`} >
@@ -68,7 +67,6 @@ const FolderGrid = () => {
         ))}
       </div>
     </div>
-    </>
   );
 };
 

@@ -34,16 +34,24 @@ const Contests = () => {
   }, []);
 
   if (loading) {
-    return <div className="text-center text-gray-600">Loading contests...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-xl text-gray-500">Loading...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center text-red-500">{error}</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-xl text-red-500">{error}</p>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-6 backdrop-blur">
-      <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center py-5">Upcoming Contests</h2>
+    <div className="min-h-screen container mx-auto p-6 backdrop-blur">
+      <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center">Contest Updates</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {contests.map((contest) => {
@@ -62,11 +70,11 @@ const Contests = () => {
           return (
             <div key={contest.contestName} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
               <div
-                className="absolute top-0 left-0 w-full h-full bg-contain bg-center bg-no-repeat opacity-10"
+                className="absolute top-0 left-0 w-full h-full bg-contain bg-center bg-no-repeat opacity-5"
                 style={{ backgroundImage: `url(${platformImage})` }}
               ></div>
               <div className="relative z-10">
-                <h3 className="text-xl font-semibold">
+                <h3 className="text-xl font-semibold  text-gray-600 dark:text-gray-300">
                   <a href={contest.contestLink} target="_blank" className="text-blue-500 hover:underline">
                     {contest.contestName}
                   </a>

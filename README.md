@@ -21,6 +21,13 @@
   - `ModeToggle` for theme switching
   - Custom components like `Sheet` for mobile menus
 
+## theme
+- **Content Text Color:**
+  - Primary Text Color : text-gray-800 dark:text-gray-100
+  - Secondary Text Color : text-gray-600 dark:text-gray-300
+  
+- **Container Color:** bg-white  dark:bg-gray-800
+
 ## Installation
 
 1. Clone the repository:

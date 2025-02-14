@@ -41,7 +41,7 @@ const JobsPage = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-center mb-6">Job Listings</h1>
+      <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center">Job Updates</h2>
       {jobs.length === 0 ? (
         <p className="text-center text-lg text-gray-500">No jobs available at the moment.</p>
       ) : (
@@ -49,12 +49,12 @@ const JobsPage = () => {
           {jobs.map((job, index) => (
             <li
               key={index}
-              className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
+              className="bg-white  dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
             >
-              <h3 className="text-xl font-semibold text-gray-800">{job.role}</h3>
-              <p className="text-md text-gray-600">Company: {job.company}</p>
-              <p className="text-md text-gray-600">Batch Eligible: {job.batch_eligible}</p>
-              <p className="text-md text-gray-600">Location: {job.location}</p>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">{job.role}</h3>
+              <p className="text-md text-gray-600 dark:text-gray-300">Company: {job.company}</p>
+              <p className="text-md text-gray-600 dark:text-gray-300">Batch Eligible: {job.batch_eligible}</p>
+              <p className="text-md text-gray-600 dark:text-gray-300">Location: {job.location}</p>
               <a
                 href={job.apply_link}
                 target="_blank"

@@ -51,7 +51,14 @@ const Navbar = () => {
         return paths.some(path => pathname.startsWith(path)) ? "/assets/codebank.png" : "/assets/cb.png";
     };
     
-    
+
+    // Check if the link is active
+    const isActive = (path) => {
+        if (path === "/") {
+            return pathname === "/" ? "text-blue-500 font-semibold" : "";
+        }
+        return pathname.startsWith(path) ? "text-blue-500 font-semibold" : "";
+    };
 
     // Function to close the menu
     const handleLinkClick = () => {
@@ -71,7 +78,7 @@ const Navbar = () => {
                         <img 
                             src={getLogo()}
                             alt="Logo"
-                            className="w-20 h-15"
+                            className="w-12 sm:w-14 md:w-18"
                         />
                         <div className="text-2xl font-bold">
                             {getTitle()}
@@ -80,16 +87,16 @@ const Navbar = () => {
                 </Link>
                 
                 <div className="hidden md:flex space-x-4 items-center">
-                    <Link href="/" className="hover:scale-105 hover:font-semibold transition-transform duration-300"> 
+                <Link href="/" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/")}`}>
                         Home
                     </Link>
-                    <Link href="/notes" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                    <Link href="/notes" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/notes")}`}>
                         Notes
                     </Link>
-                    <Link href="/contests" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                    <Link href="/contests" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/contests")}`}>
                         Contests
                     </Link>
-                    <Link href="/jobs" className="hover:scale-105 hover:font-semibold transition-transform duration-300">
+                    <Link href="/jobs" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/jobs")}`}>
                         Jobs
                     </Link>
                     <div className='flex items-center'>
@@ -112,10 +119,10 @@ const Navbar = () => {
                                 <SheetTitle className="font-bold my-4">Menu</SheetTitle>
                                 <SheetDescription>
                                     <div className="flex flex-col gap-6">
-                                        <Link href="/" onClick={handleLinkClick}> Home </Link>
-                                        <Link href="/notes" onClick={handleLinkClick}> Notes </Link>
-                                        <Link href="/contests" onClick={handleLinkClick}> Contests </Link>
-                                        <Link href="/jobs" onClick={handleLinkClick}> Jobs </Link>
+                                        <Link href="/" onClick={handleLinkClick} className={isActive("/")}>Home</Link>
+                                        <Link href="/notes" onClick={handleLinkClick} className={isActive("/notes")}>Notes</Link>
+                                        <Link href="/contests" onClick={handleLinkClick} className={isActive("/contests")}>Contests</Link>
+                                        <Link href="/jobs" onClick={handleLinkClick} className={isActive("/jobs")}>Jobs</Link>
                                         <div>
                                             <ModeToggle />
                                         </div>
