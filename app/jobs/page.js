@@ -27,7 +27,7 @@ const JobsPage = () => {
     return (
       <div className="flex flex-col justify-center items-center mt-40">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500"></div>
-        <p className="text-xl text-gray-500 mt-2">Loading...</p>
+        <p className="text-xl text-gray-500 mt-2 ml-5">Loading...</p>
       </div>
     );
   }

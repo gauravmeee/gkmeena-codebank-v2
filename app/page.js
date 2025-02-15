@@ -1,6 +1,7 @@
 import Head from "next/head";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
 export default function Home() {
+  
   return (
     <>
       <Head>
@@ -9,23 +10,17 @@ export default function Home() {
 
       <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-white ">
         {/* Hero Section */}
-        <section className="text-center py-20">
+        <section className="text-center py-10">
           <div className="container mx-auto">
-            <h1 className="text-4xl font-semibold mb-4">Welcome to CodeBank 👐</h1>
+            <h1 className="text-4xl font-semibold mb-4">Welcome to CodeBank 👋</h1>
             <p className="text-xl mb-6">
               Your ultimate platform for coding services, contests, job posts, Resources and more!
             </p>
-            <a
-              href="#services"
-              className="bg-blue-500 text-white py-2 px-8 rounded-lg hover:bg-blue-600 transition"
-            >
-              Explore Services
-            </a>
           </div>
         </section>
 
         {/* Services Section */}
-        <section id="services" className="py-20 mx-5 px-10 rounded-lg bg-gray-100 dark:bg-gray-800">
+        <section id="services" className="py-16 mx-5 px-10 rounded-lg bg-gray-100 dark:bg-gray-800">
           <div className="container mx-auto text-center">
             <h2 className="text-3xl font-semibold mb-10 text-gray-900 dark:text-white">Our Services</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
