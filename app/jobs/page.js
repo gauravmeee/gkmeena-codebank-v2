@@ -40,6 +40,8 @@ const JobsPage = () => {
     );
   }
 
+  
+
   return (
     <div className="min-h-screen container mx-auto p-6">
       <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center">Job Updates</h2>
@@ -47,7 +49,9 @@ const JobsPage = () => {
         <p className="text-center text-lg text-gray-500">No jobs available at the moment.</p>
       ) : (
         <ul className="space-y-6">
-          {jobs.map((job, index) => (
+          {jobs.map((job, index) => {
+            const datePosted = new Date(job.date_posted); // Convert to Date object
+            return (
             <li
               key={index}
               className="bg-white  dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
@@ -56,7 +60,7 @@ const JobsPage = () => {
               <p className="text-md text-gray-600 dark:text-gray-300">Company: {job.company}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Batch Eligible: {job.batch_eligible}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Location: {job.location}</p>
-              <p className="text-md text-gray-600 dark:text-gray-300">Date Posted: {job.date_posted}</p>
+              <p className="text-md text-gray-600 dark:text-gray-300">Date Posted: {datePosted.getDate()}-{datePosted.getMonth()+1}-{datePosted.getFullYear()}</p>
               
               <a
                 href={job.apply_link}
@@ -67,7 +71,8 @@ const JobsPage = () => {
                 Apply Link
               </a>
             </li>
-          ))}
+          );
+          })}
         </ul>
       )}
     </div>

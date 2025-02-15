@@ -119,7 +119,7 @@ const Navbar = () => {
                             <SheetHeader>
                                 <SheetTitle className="font-bold my-4">Menu</SheetTitle>
                                 <SheetDescription>
-                                    <div className="flex flex-col gap-6">
+                                    <div className="flex flex-col gap-6 text-center">
                                         <Link href="/" onClick={handleLinkClick} className={isActive("/")}>Home</Link>
                                         <Link href="/notes" onClick={handleLinkClick} className={isActive("/notes")}>Notes</Link>
                                         <Link href="/contests" onClick={handleLinkClick} className={isActive("/contests")}>Contests</Link>
@@ -127,7 +127,7 @@ const Navbar = () => {
                                         <div>
                                             <ModeToggle />
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex justify-center gap-2">
                                         <a href="https://www.linkedin.com/in/gauravmeee/" className="text-blue-600 dark:text-blue-400" ><FaLinkedin size={24} /></a>
                                         <a href="https://github.com/gauravmeee" className="text-gray-900 dark:text-gray-300"> <FaGithub size={24}/></a>
                                         </div>
