@@ -25,15 +25,16 @@ const JobsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-xl text-gray-500">Loading...</p>
+      <div className="flex flex-col justify-center items-center mt-40">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500"></div>
+        <p className="text-xl text-gray-500 mt-2">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center pt-40">
         <p className="text-xl text-red-500">{error}</p>
       </div>
     );

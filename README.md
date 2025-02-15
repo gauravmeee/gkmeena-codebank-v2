@@ -23,6 +23,15 @@
 - **Jobs**: Browse job listings for various tech roles.
 - **Theme Toggle**: Switch between light and dark themes.
 
+## Upcoming Features
+- Enhanced Loading UI – Centered loading animation for better UX.
+- Company Logos – Automatically fetch and display company images.
+- User Authentication – Enable login and save preferences for contests & listings.
+- Notifications – Implement alerts for new contests & updates.
+- Improved Theming – Light & Dark Mode toggle without dropdown.
+- Smart Coding Questions – Filter by company, difficulty, and topic.
+- Expanded Contest Listings – Support for Unstop, Mettl, and LeetCode.
+
 ## Technologies Used
 - **Frontend**: 
   - React

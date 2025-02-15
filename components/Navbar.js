@@ -1,4 +1,5 @@
 "use client";
+import { FaLinkedin, FaGithub } from "react-icons/fa";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -125,6 +126,10 @@ const Navbar = () => {
                                         <Link href="/jobs" onClick={handleLinkClick} className={isActive("/jobs")}>Jobs</Link>
                                         <div>
                                             <ModeToggle />
+                                        </div>
+                                        <div className="flex gap-2">
+                                        <a href="https://www.linkedin.com/in/gauravmeee/" className="text-blue-600 dark:text-blue-400" ><FaLinkedin size={24} /></a>
+                                        <a href="https://github.com/gauravmeee" className="text-gray-900 dark:text-gray-300"> <FaGithub size={24}/></a>
                                         </div>
                                     </div>
                                 </SheetDescription>
