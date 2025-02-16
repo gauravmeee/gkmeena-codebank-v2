@@ -8,7 +8,7 @@ import Script from "next/script";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "CodeBank- All in one Programming Resources",
+  title: "CodeBank - Coding Resources",
   description: "by GKmeena",
 };
 
