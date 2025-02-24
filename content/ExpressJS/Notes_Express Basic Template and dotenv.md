@@ -1,6 +1,3 @@
----
-slug : express-basic-template
----
 
 ## Express
 ```js
@@ -13,7 +10,6 @@ const app = express();
 
 
 ## dotenv `.env`
-
 ```js
 // import dotenv
 const dotenv = require('dotenv');

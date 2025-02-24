@@ -1,185 +1,114 @@
----
-slug : javascript-import-export-notes
----
 
-**Default Import Export :**
+#### ES6 Syntax (`.mjs`)
 
-ES6 Syntax (Preferred for Modern JavaScript)
+- **Default Import/Export**
 ```js
 // Export
 export default ComponentDefault;
+
 // import
 import ComponentDef from './component'; // 'ComponentDef' can be any name.
 ```
 
-CommonJS Syntax
-```js
-// Export
-module.exports = ComponentDefault};
-// import
-const ComponentDef = require('./component'); // 'ComponentDef' can be any name.
-```
-
-**Named Import Export :**
-
-ES6 Syntax (Preferred for Modern JavaScript)
+- **Named Import/Export**
 ```js
 // Export
 export  {component1, component2};
+
 // import
 import {component, component2} from './component';
 ```
 
+---
+#### Common JS Syntax (`.js`)`
+
+- **Default Import/Export**
+```js
+// Export
+module.exports = ComponentDefault};
+
+// import
+const ComponentDef = require('./component'); // 'ComponentDef' can be any name.
+```
+
+- **Named Import Export :**
 ```js
 // Export
 module.exports = {component1, component2};
+
 // import
 const {component1, component2} = require('./component');
 ```
 
 ---
-# Require vs Import
 
-In JavaScript, `import` and `require` are both used to include and use modules, but they are used in different contexts and have different syntax and features. Here’s a comparison:
+#### **`require` vs `import` **
 
-#### `require`
+|Feature|`require` (CommonJS)|`import` (ES Modules)|
+|---|---|---|
+|**Syntax**|`const module = require('module')`|`import module from 'module'`|
+|**Context**|CommonJS (CJS)|ES Modules (ESM)|
+|**Usage In**|Node.js (default)|Modern JavaScript (Browsers, Node.js with `"type": "module"`)|
+|**Loading Type**|**Synchronous** (blocks execution until module loads) ⭐|**Asynchronous** (supports `import()` for dynamic loading) ⭐|
+|**Static Analysis**|**No** (Cannot be optimized at compile time)|**Yes** (Allows tree-shaking & optimization)|
+|**Dynamic Import**|**Yes** (Can be used inside functions)|**Yes** (`import()` is available)|
+|**Top-Level Usage**|Can be used anywhere (inside functions, conditionally)|Must be at the top-level (except dynamic `import()`)|
+|**Default Export Handling**|`module.exports = value;`|`export default value;`|
+|**Named Export Handling**|`module.exports = { val1, val2 };` (Object Destructuring)|`export { val1, val2 };` (Direct Import)|
+|**Tree Shaking**|**No** (Loads everything, even unused exports)|**Yes** (Only imports used code) ⭐|
+|**File Extension**|`.js`|`.mjs` or `.js` (with `"type": "module"`)|
+|**Support in Node.js**|Default support|Requires `"type": "module"` in `package.json` or `.mjs` extension|
+|**Module Execution**|Runs immediately when required|Deferred execution (module graph is analyzed first)|
 
-- **Context**: CommonJS
-- **Used in**: Node.js (primarily)
-- **Syntax**:
-  ```javascript
-  const module = require('module-name');
-  ```
-- **Features**:
-  - **Synchronous Loading**: Modules are loaded synchronously. This is suitable for server-side code where modules are typically loaded from the filesystem.
-  - **Dynamic Loading**: You can use `require` inside functions or conditionally.
-  - **No static analysis**: Since `require` is a function call, the imports cannot be analyzed at compile time for optimizations.
 
-#### `import`
+---
 
-- **Context**: ES Modules (ESM)
-- **Used in**: Modern JavaScript environments including browsers and Node.js (with `.mjs` extension or `type: module` in `package.json`)
-- **Syntax**:
-  ```javascript
-  import { something } from 'module-name';
-  import * as module from 'module-name';
-  import defaultExport from 'module-name';
-  ```
-- **Features**:
-  - **Asynchronous Loading**: Modules can be loaded asynchronously using `import()`, which returns a promise.
-  - **Static Analysis**: `import` statements are static and can be analyzed at compile time. This allows for tree-shaking, which removes unused code during bundling.
-  - **Top-Level Only**: `import` statements must be at the top level of the module and cannot be used conditionally or inside functions.
+#### `ES6` Default vs Named Export
 
-# Default Export vs Named Export
+**default exports** are specific to **ES Modules (ESM)** and do not exist in **CommonJS (CJS)**.
 
-In JavaScript ES Modules, `default export` and `named export` are two ways to export code from a module. They serve different purposes and have different syntaxes. Here's a breakdown of each:
+|Feature|Default Export|Named Export|
+|---|---|---|
+|**Definition**|Exports a single value per module|Exports multiple values per module|
+|**Syntax**|`export default value;`|`export { value1, value2 };`|
+|**Declaration**|Can be declared inline or later|Each export must be explicitly named|
+|**Number of Exports**|Only one per module|Multiple per module|
+|**Import Syntax**|`import anyName from './module';`|`import { value1, value2 } from './module';`|
+|**Import Naming**|Can use any name|Must match exported names (unless using aliases)|
+|**Aliasing**|Implicitly allows renaming|Requires `as` keyword (`import { value1 as alias }`)|
+|**Use Case**|Best for exporting a single main function, class, or object|Best for utility functions, constants, or multiple exports|
+- **Default export**: Imported without curly braces.
+- **Named export**: Imported with curly braces and the exact name.
 
-### Default Export
+---
+#### Example `default + {named Exports}`
 
-- **Purpose**: Allows you to export a single value or entity from a module.
+- **Export**
 ```javascript
-  // module.js
-  export default function myFunction() {
-    // function body
-  }
-  
-  // or exporting an object
-  export default {
-    key: 'value'
-  };
-  ```
-
-Declare first and Export at later point
-```javascript
-  // module.js
-  function myFunction() {
-    // function body
-  }
-  
-  // or exporting an object
-  export default myFunction;
-  ```
-
-- **Importing**:
-  ```javascript
-  // Importing the default export
-  import myFunction from './module';
-  ```
-
-  ```javascript
-  // Importing default export with a different name
-  import anyName from './module';
-  ```
-
-- **Characteristics**:
-  - **Single Default Export**: Each module can have only one default export.
-  - **Import Name**: The name used when importing the default export can be chosen freely (it does not have to match the name used in the module).
-
-### Named Export
-
-- **Purpose**: Allows you to export multiple values or entities from a module.
-- **Syntax**:
-  ```javascript
-  // module.js
-  export function myFunction() {
-    // function body
-  }
-
-  export const myValue = 42;
-  
-  // or export all together
-  const anotherValue = 'hello';
-  export { anotherValue };
-  ```
-
-- **Importing**:
-  ```javascript
-  // Importing named exports
-  import { myFunction, myValue } from './module';
-  ```
-
-  ```javascript
-  // Importing with alias
-  import { myFunction as func, myValue as value } from './module';
-  ```
-
-- **Characteristics**:
-  - **Multiple Named Exports**: You can have multiple named exports per module.
-  - **Import Name**: The names used when importing must match the names exported (unless you use an alias).
-
-### Comparison
-
-- **Default Export**:
-  - Suitable for exporting a single main entity or value from a module.
-  - Importing does not require the exact name, making it flexible.
-
-- **Named Export**:
-  - Suitable for exporting multiple entities from a module.
-  - Importing requires exact names or allows for aliasing.
-
-
-##### Default + Named Exports
-
-**Export file**
-```javascript
-// math.js
+// defining Function+ export default
 export default function add(a, b) {
   return a + b;
 }
 
+// defining Function + named export
 export function multiply(a, b) {
   return a * b;
 }
 
+// defining Variable
 export const PI = 3.14;
-```
 
-**Import file**
+// defining Function
+function sub(a, b){ 
+	return a-b; 
+}
+
+// export function
+export sub;
+```
+- **Import**
 ```javascript
 // app.js
-import add, { multiply, PI } from './math.js';
+import add, { multiply, PI, sub } from './math.js';
 ```
 
-1. **Default export**: Imported without curly braces.
-2. **Named export**: Imported with curly braces and the exact name.
-3. If you try to import a named export as a default import or vice versa, you'll get an error.

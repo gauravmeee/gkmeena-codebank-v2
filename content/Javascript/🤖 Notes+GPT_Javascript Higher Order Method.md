@@ -1,16 +1,25 @@
----
-slug : javascript-higher-order-methods-gpt-notes
----
-
 A **higher-order method** in JavaScript is a function that either:
-
 1. **Takes another function as an argument**, or
 2. **Returns a function** as its result.
+
+- **`map()`** – Transforms each item → **Returns a new array**
+- **`forEach()`** – Executes a function for each item → **Returns `undefined`**
+- **`filter()`** – Filters items by a condition → **Returns a new array**
+- **`reduce()`** – Reduces array to a single value → **Returns a single value**
+- **`find()`** – Finds the first matching item → **Returns the first match**
+- **`findIndex()`** – Finds the index of the first match → **Returns the index**
+- **`some()`** – Checks if **any** item meets a condition → **Returns `true` or `false`**
+- **`every()`** – Checks if **all** items meet a condition → **Returns `true` or `false`**
+- **`sort()`** – Sorts array in place → **Returns the sorted array (mutates original)**
+- **`flatMap()`** – Maps and flattens in one step → **Returns a new flattened array**
+
+---
 
 Higher-order methods are commonly used in functional programming and allow for operations like mapping, filtering, and reducing collections.
 
 ### Examples of Higher-Order Methods in JavaScript:
 
+**higher-order function** -> a function that Takes another function as an argument (callback) and Returns a function (optional).
 #### 1. **Array Methods (e.g., `map`, `filter`, `reduce`)**
 
 - **`map`:** Takes a callback function and applies it to each element of the array.

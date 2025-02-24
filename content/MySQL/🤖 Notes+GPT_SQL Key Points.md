@@ -1,6 +1,3 @@
----
-slug : mysql-key-points-gpt-notes
----
 
 ---
 #### Types of Joins

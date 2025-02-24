@@ -1,6 +1,3 @@
----
-slug : react-libraries-key-use
----
 
 Simply importing React into your JavaScript file **does not automatically make your code React**. You need to explicitly use React's features, such as components, hooks, or JSX, to turn your code into React-based code.
 

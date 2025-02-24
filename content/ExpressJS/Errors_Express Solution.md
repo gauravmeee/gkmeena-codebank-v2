@@ -1,6 +1,3 @@
----
-slug : express-common-errors
----
 
 **Error:** ❌
 ```sh

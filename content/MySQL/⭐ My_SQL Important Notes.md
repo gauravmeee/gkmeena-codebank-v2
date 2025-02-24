@@ -1,6 +1,3 @@
----
-slug : mysql-important-notes
----
 
 # JOINS
 

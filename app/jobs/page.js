@@ -2,6 +2,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
+if (process.env.NODE_ENV === 'production') {
+  console.log('Running in production mode');
+} else {
+  console.log('Running in development mode');
+}
+
 const JobsPage = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +66,16 @@ const JobsPage = () => {
               <p className="text-md text-gray-600 dark:text-gray-300">Company: {job.company}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Batch Eligible: {job.batch_eligible}</p>
               <p className="text-md text-gray-600 dark:text-gray-300">Location: {job.location}</p>
+              {job.expected_stipend && (
+                <p className="text-md text-gray-600 dark:text-gray-300">
+                  Expected Stipend: {job.expected_stipend}
+                </p>
+              )}
+              {job.expected_benefits && (
+                <p className="text-md text-gray-600 dark:text-gray-300">
+                  Extra Benefits: {job.expected_benefits}
+                </p>
+              )}
               <p className="text-md text-gray-600 dark:text-gray-300">Date Posted: {datePosted.getDate()}-{datePosted.getMonth()+1}-{datePosted.getFullYear()}</p>
               
               <a

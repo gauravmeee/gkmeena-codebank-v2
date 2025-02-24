@@ -1,6 +1,3 @@
----
-slug : react-my-practical-doubts-notes
----
 
 ---
 
@@ -70,3 +67,25 @@ function App() {
 If any child component (e.g., `<Footer/>`, `<About/>`) has issues like being incomplete or not exported properly, React throws an error, and would not render even complete one like `<Header/>`
 
 ---
+## Call by Referenence
+
+- **React Issue:** The `onDelete()` function **Executes immediately** when the component renders.
+```jsx
+const onDelete = () => {
+  console.log("Function executed");
+};
+
+<button onClick={onDelete()}>Delete</button>;
+
+// `onDelete()` executes immediately because `()` calls the function right away.
+// The button gets `<button onClick={undefined}>` because `onDelete()` returns nothing.
+```
+
+
+- **Solution: Pass by reference** The `onDelete` function runs only when the button is clicked.
+```jsx
+<button onClick={onDelete}>Delete</button>;
+
+// Now, `onDelete` is passed as a function reference** and will only execute on a click.
+```
+
