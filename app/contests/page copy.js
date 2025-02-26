@@ -1,23 +1,51 @@
-async function getContests() {
-  try {
-    const response = await fetch('https://flask-contest-api.onrender.com/', { 
-      next: { revalidate: 3600 } // Revalidate every hour
-    });
-    const data = await response.json();
-    return data.contests || [];
-  } catch (error) {
-    console.error("Failed to fetch contests:", error);
-    return [];
-  }
-}
+"use client";  // This makes this a Client Component
 
-export default async function ContestsPage() {
-  const contests = await getContests();
-  
-  if (!contests.length) {
+import { useEffect, useState } from "react";
+
+const Contests = () => {
+  const [contests, setContests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const apiUrl = 'https://flask-contest-api.onrender.com/'; // URL for the API
+
+
+  // Fetch contests data
+  useEffect(() => {
+    const fetchContests = async () => {
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        if (data.contests && data.contests.length > 0) {
+          setContests(data.contests);
+        } else {
+          setError("No contests available at the moment.");
+        }
+      } catch (err) {
+        console.error("Error fetching contests:", err);
+        setError("Failed to load contests. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContests();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col justify-center items-center mt-40">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500"></div>
+        <p className="text-xl text-gray-500 mt-2 ml-5">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
     return (
       <div className="flex justify-center items-center pt-40">
-        <p className="text-xl text-red-500">No contests available at the moment.</p>
+        <p className="text-xl text-red-500">{error}</p>
       </div>
     );
   }
@@ -65,3 +93,4 @@ export default async function ContestsPage() {
   );
 };
 
+export default Contests;

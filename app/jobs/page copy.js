@@ -1,50 +1,50 @@
-// // app/jobs/page.js
-// import axios from 'axios';
+"use client";  // This makes this a Client Component
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// // Server component - no "use client" directive needed
-// async function getJobs() {
-//   try {
-//     // This fetch happens on the server
-//     const response = await axios.get('https://flask-jobs-api.onrender.com/', {
-//       // Using Next.js revalidation - adjust time as needed
-//       headers: {
-//         'Cache-Control': 'max-age=0, s-maxage=3600' // Cache for 1 hour on server
-//       }
-//     });
-//     return response.data;
-//   } catch (error) {
-//     console.error("Failed to fetch jobs:", error);
-//     return [];
-//   }
-// }
-
-// Alternative getJobs function using native fetch instead of axios
-async function getJobs() {
-  try {
-    // Using Next.js fetch with revalidation
-    const response = await fetch('https://flask-jobs-api.onrender.com/', {
-      next: { revalidate: 3600 } // Revalidate every hour
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error("Failed to fetch jobs:", error);
-    return [];
-  }
+if (process.env.NODE_ENV === 'production') {
+  console.log('Running in production mode');
+} else {
+  console.log('Running in development mode');
 }
 
+const JobsPage = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-// Log environment only on the server side
-console.log(`Running in ${process.env.NODE_ENV} mode`);
+  useEffect(() => {
+    // Function to fetch jobs from the Flask API
+    const fetchJobs = async () => {
+      try {
+        const response = await axios.get('https://flask-jobs-api.onrender.com/'); // URL of your Flask API
+        setJobs(response.data); // Set jobs data to state
+      } catch (err) {
+        setError('Error fetching jobs');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-export default async function JobsPage() {
-  // Fetch data on the server
-  const jobs = await getJobs();
+    fetchJobs();
+  }, []); // Empty dependency array to run only once when the component mounts
 
+  if (loading) {
+    return (
+      <div className="flex flex-col justify-center items-center mt-40">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-500"></div>
+        <p className="text-xl text-gray-500 mt-2 ml-5">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center pt-40">
+        <p className="text-xl text-red-500">{error}</p>
+      </div>
+    );
+  }
 
   
 
@@ -95,3 +95,4 @@ export default async function JobsPage() {
   );
 };
 
+export default JobsPage;
