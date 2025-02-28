@@ -1,22 +1,3 @@
-// // app/jobs/page.js
-// import axios from 'axios';
-
-// // Server component - no "use client" directive needed
-// async function getJobs() {
-//   try {
-//     // This fetch happens on the server
-//     const response = await axios.get('https://flask-jobs-api.onrender.com/', {
-//       // Using Next.js revalidation - adjust time as needed
-//       headers: {
-//         'Cache-Control': 'max-age=0, s-maxage=3600' // Cache for 1 hour on server
-//       }
-//     });
-//     return response.data;
-//   } catch (error) {
-//     console.error("Failed to fetch jobs:", error);
-//     return [];
-//   }
-// }
 
 // Alternative getJobs function using native fetch instead of axios
 async function getJobs() {

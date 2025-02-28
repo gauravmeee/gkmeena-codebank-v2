@@ -28,7 +28,8 @@ export default async function ContestsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {contests.map((contest) => {
-          const formattedDate = new Date(contest.startTime).toLocaleDateString('en-GB', {
+          const formattedDate = new Date(contest.startTime).toLocaleString('en-GB', {
+            timeZone: 'Asia/Kolkata', // Force IST timezone
             day: '2-digit',
             weekday: 'short',
             month: 'short',
@@ -37,7 +38,6 @@ export default async function ContestsPage() {
             minute: '2-digit',
             hour12: true,
           });
-          
 
           const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
 
