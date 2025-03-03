@@ -1,5 +1,7 @@
 import Head from "next/head";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
+import AuthButtons from "@/components/auth/AuthButtons";
+
 export default function Home() {
   
   return (
@@ -16,6 +18,9 @@ export default function Home() {
             <p className="text-xl mb-6">
               Your ultimate platform for coding services, contests, job posts, Resources and more!
             </p>
+            <div className="flex justify-center mb-8">
+              <AuthButtons variant="hero" />
+            </div>
           </div>
         </section>
 

@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";  // Import Footer component
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -35,9 +36,11 @@ export default function RootLayout({ children }) {
             enableSystem
             disableTransitionOnChange
           >
-        <Navbar/>
-        <main className="flex-grow">{children}</main>
-        <Footer/>
+        <AuthProvider>
+          <Navbar/>
+          <main className="flex-grow">{children}</main>
+          <Footer/>
+        </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

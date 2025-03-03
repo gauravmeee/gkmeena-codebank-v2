@@ -16,6 +16,7 @@ import {
 import { ModeToggle } from './theme-btn';
 import LoadingBar from 'react-top-loading-bar';
 import { usePathname } from 'next/navigation';
+import AuthButtons from './auth/AuthButtons';
 
 const Navbar = () => {
     const [progress, setProgress] = useState(0);
@@ -90,28 +91,29 @@ const Navbar = () => {
                     </div>
                 </Link>
                 
-                <div className="hidden md:flex space-x-4 items-center">
-                <Link href="/" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/")}`}>
-                        Home
-                    </Link>
-                    <Link href="/notes" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/notes")}`}>
-                        Notes
-                    </Link>
-                    <Link href="/contests" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/contests")}`}>
-                        Contests
-                    </Link>
-                    <Link href="/jobs" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/jobs")}`}>
-                        Jobs
-                    </Link>
-                    <div className='flex items-center'>
+                <div className="hidden md:flex items-center space-x-6">
+                    <div className="flex items-center space-x-4">
+                        <Link href="/" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/")}`}>
+                            Home
+                        </Link>
+                        <Link href="/notes" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/notes")}`}>
+                            Notes
+                        </Link>
+                        <Link href="/contests" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/contests")}`}>
+                            Contests
+                        </Link>
+                        <Link href="/jobs" className={`hover:scale-105 hover:font-semibold transition-transform duration-300 ${isActive("/jobs")}`}>
+                            Jobs
+                        </Link>
+                    </div>
+                    <div className="flex items-center space-x-4 border-l pl-4">
                         <ModeToggle />
+                        <AuthButtons variant="navbar" />
                     </div>
                 </div>
 
-                <div className="md:hidden">
-                    <span className="mx-2"> 
-                        <ModeToggle />
-                    </span>
+                <div className="md:hidden flex items-center space-x-2">
+                    <ModeToggle />
                     <Sheet open={isOpen} onOpenChange={setIsOpen}>
                         <SheetTrigger>
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -127,12 +129,15 @@ const Navbar = () => {
                                         <Link href="/notes" onClick={handleLinkClick} className={isActive("/notes")}>Notes</Link>
                                         <Link href="/contests" onClick={handleLinkClick} className={isActive("/contests")}>Contests</Link>
                                         <Link href="/jobs" onClick={handleLinkClick} className={isActive("/jobs")}>Jobs</Link>
-                                        <div>
+                                        <div className="flex justify-center">
                                             <ModeToggle />
                                         </div>
+                                        <div className="flex flex-col gap-2">
+                                            <AuthButtons className="w-full" variant="navbar" />
+                                        </div>
                                         <div className="flex justify-center gap-2">
-                                        <a href="https://www.linkedin.com/in/gauravmeee/" className="text-blue-600 dark:text-blue-400" ><FaLinkedin size={24} /></a>
-                                        <a href="https://github.com/gauravmeee" className="text-gray-900 dark:text-gray-300"> <FaGithub size={24}/></a>
+                                            <a href="https://www.linkedin.com/in/gauravmeee/" className="text-blue-600 dark:text-blue-400" ><FaLinkedin size={24} /></a>
+                                            <a href="https://github.com/gauravmeee" className="text-gray-900 dark:text-gray-300"> <FaGithub size={24}/></a>
                                         </div>
                                     </div>
                                 </SheetDescription>
