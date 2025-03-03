@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
 
 import React, { useState, useEffect } from 'react';
@@ -76,7 +77,7 @@ const Navbar = () => {
             <div className="container mx-auto flex justify-between items-center">
                 <Link href={"/"}>
                     <div className="flex items-center space-x-2">
-                        <img 
+                        <Image 
                             src={getLogo()}
                             alt="Logo"
                             className="w-12 sm:w-14 md:w-18"

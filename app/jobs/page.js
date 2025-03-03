@@ -1,17 +1,26 @@
 // In an API route or server action where you update data
 import { revalidateTag } from 'next/cache';
 
-// Force revalidation of all data with this tag
-revalidateTag('contests');
+// Server Action to update jobs and revalidate cache
+export async function updateJobs() {
+  try {
+    await fetch("https://flask-jobs-api.onrender.com/update", { method: "POST" });
+    revalidateTag("jobs");
+    return { message: "Jobs updated and cache revalidated" };
+  } catch (error) {
+    console.error("Failed to update jobs:", error);
+    return { message: "Failed to update jobs" };
+  }
+}
 
-// Alternative getJobs function using native fetch instead of axios
+// Function to fetch jobs with caching
 async function getJobs() {
   try {
     // Using Next.js fetch with revalidation
     const response = await fetch('https://flask-jobs-api.onrender.com/', {
       next: { 
         revalidate: 3600,
-        tags: ['contests'] // Add a cache tag
+        tags: ['jobs'] // Add a cache tag
       }
     });
     

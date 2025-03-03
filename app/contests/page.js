@@ -1,8 +1,17 @@
 // In an API route or server action where you update data
 import { revalidateTag } from 'next/cache';
 
-// Force revalidation of all data with this tag
-revalidateTag('contests');
+// Server Action to update contests and revalidate cache
+export async function updateJobs() {
+  try {
+    await fetch("https://flask-jobs-api.onrender.com/update", { method: "POST" });
+    revalidateTag("contests");
+    return { message: "Jobs updated and cache revalidated" };
+  } catch (error) {
+    console.error("Failed to update jobs:", error);
+    return { message: "Failed to update jobs" };
+  }
+}
 
 async function getContests() {
   try {
