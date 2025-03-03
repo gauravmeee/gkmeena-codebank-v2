@@ -14,7 +14,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-10">
           <div className="container mx-auto">
-            <h1 className="text-4xl font-semibold mb-4">Welcome to CodeBank 👋</h1>
+            <h1 className="text-4xl font-semibold mb-4">Welcome to CodeBank</h1>
             <p className="text-xl mb-6">
               Your ultimate platform for coding services, contests, job posts, Resources and more!
             </p>

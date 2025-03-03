@@ -19,7 +19,7 @@ export default function AuthButtons({ className = '', variant = 'default' }) {
     if (variant === 'hero') {
       return (
         <div className="text-lg font-medium whitespace-nowrap">
-          <span className="text-primary">Hello</span>, {currentUser.displayName || currentUser.email.split('@')[0]}!
+          <span className="text-primary">Hello</span>, {currentUser.displayName || currentUser.email.split('@')[0]}! 🎉
         </div>
       );
     }
