@@ -22,7 +22,7 @@ export default function ContestsClient({ initialContests, platforms }) {
         // Format date with month name
         const date = new Date(contest.startTime);
         key = date.toLocaleDateString('en-GB', {
-          day: '2-digit',
+          day: 'numeric',
           month: 'long',
           year: 'numeric'
         });
@@ -56,14 +56,13 @@ export default function ContestsClient({ initialContests, platforms }) {
 
   return (
     <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
-      <div className="flex items-center justify-center relative mb-6 sm:mb-8">
-        {/* Centered Heading */}
+      {/* Responsive header with flex layout instead of absolute positioning */}
+      <div className="flex flex-col sm:flex-row items-center justify-center relative mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
           Coding Contests
         </h2>
-
-        {/* Right-aligned Filters */}
-        <div className="absolute right-0">
+        
+        <div className="sm:absolute sm:right-0 mt-2 sm:mt-0">
           <ContestFilters
             platforms={platforms}
             selectedPlatforms={selectedPlatforms}
@@ -81,9 +80,9 @@ export default function ContestsClient({ initialContests, platforms }) {
             {groupContests.map((contest) => {
               const formattedDate = new Date(contest.startTime).toLocaleString('en-GB', {
                 timeZone: 'Asia/Kolkata',
-                day: '2-digit',
+                day: 'numeric',
                 weekday: 'short',
-                month: 'long',
+                month: 'short',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
@@ -116,4 +115,4 @@ export default function ContestsClient({ initialContests, platforms }) {
       ))}
     </div>
   );
-} 
+}

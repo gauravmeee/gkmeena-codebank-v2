@@ -57,11 +57,16 @@ const getFolders = () => {
 const folders = getFolders();
 
 
-
+{/* <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
+<div className="flex items-center justify-center mb-6 sm:mb-8">
+  <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
+    Tech Jobs
+  </h2>
+</div> */}
 const FolderGrid = () => {
   return (
     // note in tailwind.config.js, xsm, sm, lg, xl, 2x are redefined
-    <div className="max-w-full mx-auto p-6 md:px-14">
+    <div className="min-h-screen sm:px-6 py-6 mx-auto backdrop-blur"> 
       <div className="flex items-center justify-center mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
           Programming Notes
