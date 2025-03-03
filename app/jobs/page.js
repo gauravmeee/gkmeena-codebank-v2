@@ -1,10 +1,18 @@
+// In an API route or server action where you update data
+import { revalidateTag } from 'next/cache';
+
+// Force revalidation of all data with this tag
+revalidateTag('contests');
 
 // Alternative getJobs function using native fetch instead of axios
 async function getJobs() {
   try {
     // Using Next.js fetch with revalidation
     const response = await fetch('https://flask-jobs-api.onrender.com/', {
-      next: { revalidate: 3600 } // Revalidate every hour
+      next: { 
+        revalidate: 3600,
+        tags: ['contests'] // Add a cache tag
+      }
     });
     
     if (!response.ok) {

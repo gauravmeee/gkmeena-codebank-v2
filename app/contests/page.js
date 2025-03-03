@@ -1,8 +1,18 @@
+// In an API route or server action where you update data
+import { revalidateTag } from 'next/cache';
+
+// Force revalidation of all data with this tag
+revalidateTag('contests');
+
 async function getContests() {
   try {
-    const response = await fetch('https://flask-contest-api.onrender.com/', { 
-      next: { revalidate: 3600 } // Revalidate every hour
+    const response = await fetch('https://flask-contest-api.onrender.com/', {
+      next: { 
+        revalidate: 3600,
+        tags: ['contests'] // Add a cache tag
+      }
     });
+
     const data = await response.json();
     return data.contests || [];
   } catch (error) {
