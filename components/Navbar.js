@@ -77,11 +77,13 @@ const Navbar = () => {
             <div className="container mx-auto flex justify-between items-center">
                 <Link href={"/"}>
                     <div className="flex items-center space-x-2">
-                        <Image 
-                            src={getLogo()}
-                            alt="Logo"
-                            className="w-12 sm:w-14 md:w-18"
-                        />
+                    <Image 
+                        src={getLogo()}
+                        alt="Logo"
+                        width={48}   // Added this line
+                        height={48}  // Added this line
+                        className="w-12 sm:w-14 md:w-18"
+                    />
                         <div className="text-2xl font-bold">
                             {getTitle()}
                         </div>

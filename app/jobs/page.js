@@ -1,5 +1,6 @@
 // In an API route or server action where you update data
 import { revalidateTag } from 'next/cache';
+import JobCard from './JobCard';
 
 // Server Action to update jobs and revalidate cache
 export async function updateJobs() {
@@ -42,54 +43,29 @@ console.log(`Running in ${process.env.NODE_ENV} mode`);
 export default async function JobsPage() {
   // Fetch data on the server
   const jobs = await getJobs();
-
-
-  
-
+      
   return (
-    <div className="min-h-screen container mx-auto p-6">
-      <h2 className="text-2xl md:text-4xl font-semibold mb-4 text-center">Job Updates</h2>
+    <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
+      <div className="flex items-center justify-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
+          Tech Jobs
+        </h2>
+      </div>
+      
       {jobs.length === 0 ? (
-        <p className="text-center text-lg text-gray-500">No jobs available at the moment.</p>
+        <div className="flex items-center justify-center min-h-[200px]">
+          <p className="text-center text-base sm:text-lg text-gray-500">
+            No jobs available at the moment.
+          </p>
+        </div>
       ) : (
-        <ul className="space-y-6">
-          {jobs.map((job, index) => {
-            const datePosted = new Date(job.date_posted); // Convert to Date object
-            return (
-            <li
-              key={index}
-              className="bg-white  dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300"
-            >
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">{job.role}</h3>
-              <p className="text-md text-gray-600 dark:text-gray-300">Company: {job.company}</p>
-              <p className="text-md text-gray-600 dark:text-gray-300">Batch Eligible: {job.batch_eligible}</p>
-              <p className="text-md text-gray-600 dark:text-gray-300">Location: {job.location}</p>
-              {job.expected_stipend && (
-                <p className="text-md text-gray-600 dark:text-gray-300">
-                  Expected Stipend: {job.expected_stipend}
-                </p>
-              )}
-              {job.expected_benefits && (
-                <p className="text-md text-gray-600 dark:text-gray-300">
-                  Extra Benefits: {job.expected_benefits}
-                </p>
-              )}
-              <p className="text-md text-gray-600 dark:text-gray-300">Date Posted: {datePosted.getDate()}-{datePosted.getMonth()+1}-{datePosted.getFullYear()}</p>
-              
-              <a
-                href={job.apply_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-block px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-300"
-              >
-                Apply Link
-              </a>
-            </li>
-          );
-          })}
+        <ul className="space-y-4 sm:space-y-6">
+          {jobs.map((job, index) => (
+            <JobCard key={index} job={job} />
+          ))}
         </ul>
       )}
     </div>
   );
-};
+}
 
