@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";  // Import Footer component
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import Script from "next/script";
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,6 +41,7 @@ export default function RootLayout({ children }) {
           <Navbar/>
           <main className="flex-grow">{children}</main>
           <Footer/>
+          <Toaster position="top-center" richColors />
         </AuthProvider>
         </ThemeProvider>
       </body>
