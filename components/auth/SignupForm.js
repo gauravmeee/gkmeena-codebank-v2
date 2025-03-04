@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
+import { FcGoogle } from 'react-icons/fc';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ export default function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { signup } = useAuth();
+  const { signup, signInWithGoogle } = useAuth();
   const router = useRouter();
 
   async function handleSubmit(e) {
@@ -36,6 +37,22 @@ export default function SignupForm() {
     } catch (error) {
       console.error('Signup error:', error);
       setError(error.message || 'Failed to create account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setError('');
+    setLoading(true);
+
+    try {
+      await signInWithGoogle();
+      router.push('/');
+      router.refresh(); // Force a refresh to update the UI
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      setError(error.message || 'Failed to sign in with Google. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -117,8 +134,37 @@ export default function SignupForm() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter>
-          <div className="text-sm text-center text-muted-foreground w-full">
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="relative w-full">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <div className="w-5 h-5 border-t-2 border-b-2 border-primary rounded-full animate-spin mr-2"></div>
+                Signing up...
+              </div>
+            ) : (
+              <>
+                <FcGoogle className="mr-2 h-4 w-4" />
+                Sign up with Google
+              </>
+            )}
+          </Button>
+          <div className="text-sm text-center text-muted-foreground">
             Already have an account?{' '}
             <Link href="/login" className="text-primary hover:underline">
               Sign in
