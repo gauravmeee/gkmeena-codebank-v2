@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 const getCompanyLogo = (company) => {
   return `https://logo.clearbit.com/${company.replace(/\s+/g, '').toLowerCase()}.com`;
 };
@@ -20,8 +22,10 @@ export default function JobCard({ job }) {
       {/* Mobile Logo - Top right corner for mobile only */}
       <div className="sm:hidden absolute right-2 top-8">
         <div className="w-12 h-12 flex items-center justify-center">
-          <img
+          <Image
             src={getCompanyLogo(job.company)}
+            width={48}
+            height={48}
             className="w-12 h-12 object-contain"
             onError={(e) => {
               e.currentTarget.parentNode.innerHTML = `<div class="w-12 h-12 flex items-center justify-center text-xs font-bold text-center text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md">${job.company.substring(0, 3)}</div>`;
@@ -75,8 +79,10 @@ export default function JobCard({ job }) {
         <div className="hidden sm:flex flex-col items-center justify-between min-w-[200px] pl-4 border-l border-gray-200 dark:border-gray-700">
           <div className="w-24 h-24 flex items-center justify-center mb-4">
             <div className="w-24 h-24 flex items-center justify-center">
-              <img
+              <Image
                 src={getCompanyLogo(job.company)}
+                width={96}
+                height={96}
                 className="w-24 h-24 object-contain"
                 onError={(e) => {
                   e.currentTarget.parentNode.innerHTML = `<div class="w-24 h-24 font-bold text-center text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center">${job.company}</div>`;
