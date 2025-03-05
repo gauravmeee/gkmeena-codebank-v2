@@ -1,6 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import { Heart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 const getCompanyLogo = (company) => {
   return `https://logo.clearbit.com/${company.replace(/\s+/g, '').toLowerCase()}.com`;
@@ -11,28 +14,60 @@ const formatDate = (dateString) => {
   return `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
 };
 
-export default function JobCard({ job }) {
+export default function JobCard({ job, isFavorite, onFavoriteToggle, currentUser }) {
+  const [logoError, setLogoError] = useState({ mobile: false, desktop: false });
+
+  const renderLogo = (size, isMobile = false) => {
+    const hasError = isMobile ? logoError.mobile : logoError.desktop;
+    const dimensions = size === 'small' ? { width: 48, height: 48 } : { width: 96, height: 96 };
+    const containerClass = size === 'small' 
+      ? "w-12 h-12 flex items-center justify-center"
+      : "w-24 h-24 flex items-center justify-center";
+    const fallbackClass = size === 'small'
+      ? "w-12 h-12 flex items-center justify-center text-xs font-bold text-center text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md"
+      : "w-24 h-24 font-bold text-center text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center";
+
+    if (hasError) {
+      return (
+        <div className={fallbackClass}>
+          {size === 'small' ? job.company.substring(0, 3) : job.company}
+        </div>
+      );
+    }
+
+    return (
+      <Image
+        src={getCompanyLogo(job.company)}
+        {...dimensions}
+        className={`${containerClass} object-contain`}
+        onError={() => setLogoError(prev => ({ ...prev, [isMobile ? 'mobile' : 'desktop']: true }))}
+        alt={`${job.company} logo`}
+      />
+    );
+  };
+
   return (
     <li className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 relative">
-      {/* Date - Positioned top right for all screens */}
-      <div className="absolute top-2 right-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-        {formatDate(job.date_posted)}
+      {/* Date and Favorite Button - Positioned top right for all screens */}
+      <div className="absolute top-2 right-2 flex items-center gap-2">
+        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          {formatDate(job.date_posted)}
+        </span>
+        {currentUser && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onFavoriteToggle}
+            className={isFavorite ? "text-red-500" : ""}
+          >
+            <Heart className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
+          </Button>
+        )}
       </div>
 
       {/* Mobile Logo - Top right corner for mobile only */}
-      <div className="sm:hidden absolute right-2 top-8">
-        <div className="w-12 h-12 flex items-center justify-center">
-          <Image
-            src={getCompanyLogo(job.company)}
-            width={48}
-            height={48}
-            className="w-12 h-12 object-contain"
-            onError={(e) => {
-              e.currentTarget.parentNode.innerHTML = `<div class="w-12 h-12 flex items-center justify-center text-xs font-bold text-center text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md">${job.company.substring(0, 3)}</div>`;
-            }}
-            alt={`${job.company} logo`}
-          />
-        </div>
+      <div className="sm:hidden absolute right-2 top-12">
+        {renderLogo('small', true)}
       </div>
 
       {/* Main content container - Row on desktop, Column on mobile */}
@@ -78,18 +113,7 @@ export default function JobCard({ job }) {
         {/* Right side - Logo/Company Name and Apply button for desktop */}
         <div className="hidden sm:flex flex-col items-center justify-between min-w-[200px] pl-4 border-l border-gray-200 dark:border-gray-700">
           <div className="w-24 h-24 flex items-center justify-center mb-4">
-            <div className="w-24 h-24 flex items-center justify-center">
-              <Image
-                src={getCompanyLogo(job.company)}
-                width={96}
-                height={96}
-                className="w-24 h-24 object-contain"
-                onError={(e) => {
-                  e.currentTarget.parentNode.innerHTML = `<div class="w-24 h-24 font-bold text-center text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center">${job.company}</div>`;
-                }}
-                alt={`${job.company}`}
-              />
-            </div>
+            {renderLogo('large')}
           </div>
           
           <a

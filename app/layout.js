@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import Script from "next/script";
 import { Toaster } from 'sonner';
+import NotificationHandler from '@/components/NotificationHandler';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,7 +17,9 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="scroll-p-20 scroll-smooth">
+    <html lang="en" className="scroll-p-20 scroll-smooth" suppressHydrationWarning>
+
+      <head />
 
       <body className={`${inter.className} flex flex-col min-h-screen`}>
 
@@ -38,6 +41,7 @@ export default function RootLayout({ children }) {
             disableTransitionOnChange
           >
         <AuthProvider>
+          <NotificationHandler />
           <Navbar/>
           <main className="flex-grow">{children}</main>
           <Footer/>

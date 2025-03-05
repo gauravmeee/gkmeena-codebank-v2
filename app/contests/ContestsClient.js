@@ -1,11 +1,122 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ContestFilters from './ContestFilters';
+import { useAuth } from '@/lib/AuthContext';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Heart, Bell } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Link from 'next/link';
+import PlatformNotificationSettings from './PlatformNotificationSettings';
 
 export default function ContestsClient({ initialContests, platforms }) {
+  const { currentUser } = useAuth();
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [groupBy, setGroupBy] = useState('none');
+  const [favorites, setFavorites] = useState([]);
+  const [notifications, setNotifications] = useState({});
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+  const [selectedContest, setSelectedContest] = useState(null);
+  const [reminderTime, setReminderTime] = useState('30');
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserPreferences();
+    }
+  }, [currentUser]);
+
+  const fetchUserPreferences = async () => {
+    try {
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      if (userPrefsDoc.exists()) {
+        const data = userPrefsDoc.data();
+        setFavorites(data.favorites || []);
+        setNotifications(data.notifications || {});
+      }
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+    }
+  };
+
+  const toggleFavorite = async (contest) => {
+    if (!currentUser) {
+      toast.error('Please sign in to save favorites');
+      return;
+    }
+
+    try {
+      const contestId = `${contest.platform}-${contest.contestName}`;
+      const newFavorites = favorites.includes(contestId)
+        ? favorites.filter(id => id !== contestId)
+        : [...favorites, contestId];
+      
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        favorites: newFavorites,
+        notifications: notifications
+      }, { merge: true });
+
+      setFavorites(newFavorites);
+      toast.success(
+        favorites.includes(contestId)
+          ? 'Removed from favorites'
+          : 'Added to favorites'
+      );
+    } catch (error) {
+      console.error('Error updating favorites:', error);
+      toast.error('Failed to update favorites');
+    }
+  };
+
+  const handleNotificationClick = (contest) => {
+    setSelectedContest(contest);
+    setShowNotificationDialog(true);
+  };
+
+  const setNotificationReminder = async () => {
+    if (!currentUser) {
+      toast.error('Please sign in to set reminders');
+      return;
+    }
+
+    try {
+      const contestId = `${selectedContest.platform}-${selectedContest.contestName}`;
+      const newNotifications = {
+        ...notifications,
+        [contestId]: {
+          reminderTime: parseInt(reminderTime),
+          contestTime: selectedContest.startTime
+        }
+      };
+
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        favorites: favorites,
+        notifications: newNotifications
+      }, { merge: true });
+
+      setNotifications(newNotifications);
+      setShowNotificationDialog(false);
+      toast.success('Reminder set successfully');
+    } catch (error) {
+      console.error('Error setting reminder:', error);
+      toast.error('Failed to set reminder');
+    }
+  };
 
   // Filter contests based on selected platforms
   const filteredContests = selectedPlatforms.length > 0
@@ -62,7 +173,14 @@ export default function ContestsClient({ initialContests, platforms }) {
           Coding Contests
         </h2>
         
-        <div className="sm:absolute sm:right-0 mt-2 sm:mt-0">
+        <div className="sm:absolute sm:right-0 mt-2 sm:mt-0 flex items-center gap-4">
+          <Link href="/contests/favorites">
+            <Button variant="outline" className="flex items-center gap-2">
+              <Heart className="h-4 w-4" />
+              Favorites
+            </Button>
+          </Link>
+          <PlatformNotificationSettings platforms={platforms} />
           <ContestFilters
             platforms={platforms}
             selectedPlatforms={selectedPlatforms}
@@ -73,11 +191,39 @@ export default function ContestsClient({ initialContests, platforms }) {
         </div>
       </div>
 
+      {/* Notification Dialog */}
+      <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Contest Reminder</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-4">When would you like to be reminded?</p>
+            <Select value={reminderTime} onValueChange={setReminderTime}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select reminder time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 minutes before</SelectItem>
+                <SelectItem value="30">30 minutes before</SelectItem>
+                <SelectItem value="60">1 hour before</SelectItem>
+                <SelectItem value="180">3 hours before</SelectItem>
+                <SelectItem value="1440">1 day before</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={setNotificationReminder}>Set Reminder</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {sortedEntries.map(([group, groupContests]) => (
         <div key={group} className="mb-8">
           {group && <h3 className="text-xl font-semibold mb-2">{group}</h3>}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {groupContests.map((contest) => {
+              const contestId = `${contest.platform}-${contest.contestName}`;
               const formattedDate = new Date(contest.startTime).toLocaleString('en-GB', {
                 timeZone: 'Asia/Kolkata',
                 day: 'numeric',
@@ -92,20 +238,45 @@ export default function ContestsClient({ initialContests, platforms }) {
               const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
 
               return (
-                <div key={contest.contestName} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
+                <div key={contestId} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
                   <div
                     className="absolute top-0 left-0 w-full h-full bg-contain bg-center bg-no-repeat opacity-5"
                     style={{ backgroundImage: `url(${platformImage})` }}
                   ></div>
                   <div className="relative z-10">
-                    <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300">
-                      <a href={contest.contestLink} target="_blank" className="text-blue-500 hover:underline">
-                        {contest.contestName}
-                      </a>
-                    </h3>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 flex-1">
+                        <a href={contest.contestLink} target="_blank" className="text-blue-500 hover:underline">
+                          {contest.contestName}
+                        </a>
+                      </h3>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleFavorite(contest)}
+                          className={favorites.includes(contestId) ? "text-red-500" : ""}
+                        >
+                          <Heart className="h-5 w-5" fill={favorites.includes(contestId) ? "currentColor" : "none"} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleNotificationClick(contest)}
+                          className={notifications[contestId] ? "text-yellow-500" : ""}
+                        >
+                          <Bell className="h-5 w-5" fill={notifications[contestId] ? "currentColor" : "none"} />
+                        </Button>
+                      </div>
+                    </div>
                     <p><strong>Platform:</strong> {contest.platform}</p>
                     <p><strong>Start Time:</strong> {formattedDate}</p>
                     <p><strong>Duration:</strong> {contest.contestDuration}</p>
+                    {notifications[contestId] && (
+                      <p className="text-sm text-yellow-500 mt-2">
+                        Reminder set for {notifications[contestId].reminderTime} minutes before
+                      </p>
+                    )}
                   </div>
                 </div>
               );
