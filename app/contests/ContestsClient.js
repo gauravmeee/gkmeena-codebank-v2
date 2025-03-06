@@ -38,11 +38,35 @@ export default function ContestsClient({ initialContests, platforms }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [platformNotifications, setPlatformNotifications] = useState({});
 
-  // Memoize filtered contests to prevent recalculation on every render
+  // Remove duplicates and memoize filtered contests
   const filteredContests = useMemo(() => {
+    // First, remove duplicates based on platform and contest name
+    const uniqueContests = initialContests.reduce((acc, contest) => {
+      const normalizedPlatform = contest.platform.trim();
+      const key = `${normalizedPlatform}-${contest.contestName.trim()}`;
+      
+      // If we already have this contest, only keep the one with the shorter URL
+      // This helps handle cases where the same contest has multiple URLs
+      if (!acc[key] || contest.contestLink.length < acc[key].contestLink.length) {
+        acc[key] = {
+          ...contest,
+          platform: normalizedPlatform // Store normalized platform name
+        };
+      }
+      return acc;
+    }, {});
+
+    const contests = Object.values(uniqueContests);
+
+    // Then apply platform filtering
     return selectedPlatforms.length > 0
-      ? initialContests.filter(contest => selectedPlatforms.includes(contest.platform))
-      : initialContests;
+      ? contests.filter(contest => {
+          const contestPlatform = contest.platform.toLowerCase();
+          return selectedPlatforms.some(platform => 
+            platform.toLowerCase().trim() === contestPlatform
+          );
+        })
+      : contests;
   }, [selectedPlatforms, initialContests]);
 
   // Memoize grouped contests

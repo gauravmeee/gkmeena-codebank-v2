@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 export default function ContestFilters({ 
   platforms, 
@@ -26,11 +26,17 @@ export default function ContestFilters({
   }, []);
 
   const handlePlatformChange = (platform) => {
-    const newPlatforms = selectedPlatforms.includes(platform)
-      ? selectedPlatforms.filter(p => p !== platform)
-      : [...selectedPlatforms, platform];
+    const normalizedPlatform = platform.trim();
+    const newPlatforms = selectedPlatforms.includes(normalizedPlatform)
+      ? selectedPlatforms.filter(p => p !== normalizedPlatform)
+      : [...selectedPlatforms, normalizedPlatform];
     setSelectedPlatforms(newPlatforms);
   };
+
+  // Normalize platforms before rendering
+  const normalizedPlatforms = useMemo(() => {
+    return [...new Set(platforms.map(p => p.trim()))].sort();
+  }, [platforms]);
 
   const handleGroupByChange = (value) => {
     if (value === currentGroupBy) {
@@ -70,7 +76,7 @@ export default function ContestFilters({
           <div className="p-4">
             <h3 className="text-sm font-medium text-gray-900 dark:text-gray-200 mb-3">Filter by Platform</h3>
             <div className="space-y-2">
-              {platforms.map(platform => (
+              {normalizedPlatforms.map(platform => (
                 <label key={platform} className="flex items-center">
                   <input
                     type="checkbox"

@@ -29,19 +29,25 @@ messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
   
   try {
-    const { title, body, icon } = payload.notification || {};
-    const { type } = payload.data || {};
+    const { title, body } = payload.notification || {};
+    const { type, platform } = payload.data || {};
 
-    console.log('[firebase-messaging-sw.js] Processing message:', { title, body, type });
+    console.log('[firebase-messaging-sw.js] Processing message:', { title, body, type, platform });
 
     if (!title) {
       console.error('[firebase-messaging-sw.js] No title in notification payload');
       return;
     }
 
+    // Get platform-specific icon
+    let icon = '/assets/contests/default.png';
+    if (platform) {
+      icon = `/assets/contests/${platform.toLowerCase()}.png`;
+    }
+
     const notificationOptions = {
       body: body || 'No message content',
-      icon: icon || '/assets/contests/default.png',
+      icon: icon,
       badge: '/assets/contests/default.png',
       vibrate: [100, 50, 100],
       data: payload.data || {},

@@ -41,11 +41,20 @@ export default async function ContestsPage() {
     );
   }
 
-  // Get all unique platforms for the filter dropdown
-  const platforms = [...new Set(contests.map(contest => contest.platform))];
+  // Normalize contests data
+  const normalizedContests = contests.map(contest => ({
+    ...contest,
+    platform: contest.platform.trim(),
+    contestName: contest.contestName.trim()
+  }));
+
+  // Get all unique normalized platforms
+  const platforms = [...new Set(
+    normalizedContests.map(contest => contest.platform)
+  )].sort();
 
   return (      
-      <ContestsClient initialContests={contests} platforms={platforms} />
+    <ContestsClient initialContests={normalizedContests} platforms={platforms} />
   );
 }
 
