@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -15,30 +15,7 @@ export default function FavoriteJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchFavorites();
-    } else {
-      setLoading(false);
-    }
-  }, [currentUser]);
-
-  const fetchFavorites = async () => {
-    try {
-      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-      if (userPrefsDoc.exists()) {
-        const data = userPrefsDoc.data();
-        setFavorites(data.jobFavorites || []);
-        await fetchJobs();
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-      setLoading(false);
-    }
-  };
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       const response = await fetch('https://flask-jobs-api.onrender.com/', {
         next: { 
@@ -51,7 +28,30 @@ export default function FavoriteJobs() {
     } catch (error) {
       console.error('Error fetching jobs:', error);
     }
-  };
+  }, []);
+
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      if (userPrefsDoc.exists()) {
+        const data = userPrefsDoc.data();
+        setFavorites(data.jobFavorites || []);
+        await fetchJobs();
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      setLoading(false);
+    }
+  }, [currentUser, fetchJobs]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchFavorites();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser, fetchFavorites]);
 
   const toggleFavorite = async (job) => {
     if (!currentUser) return;

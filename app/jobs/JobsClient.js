@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import JobCard from './JobCard';
 import JobFilters from './JobFilters';
 import { useAuth } from '@/lib/AuthContext';
@@ -24,9 +24,9 @@ export default function JobsClient({ initialJobs = [] }) {
     if (currentUser) {
       fetchUserPreferences();
     }
-  }, [currentUser]);
+  }, [currentUser, fetchUserPreferences]);
 
-  const fetchUserPreferences = async () => {
+  const fetchUserPreferences = useCallback(async () => {
     try {
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
       if (userPrefsDoc.exists()) {
@@ -37,7 +37,7 @@ export default function JobsClient({ initialJobs = [] }) {
     } catch (error) {
       console.error('Error fetching user preferences:', error);
     }
-  };
+  }, [currentUser]);
 
   const toggleFavorite = async (job) => {
     if (!currentUser) {

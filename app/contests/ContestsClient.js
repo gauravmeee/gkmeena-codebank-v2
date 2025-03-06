@@ -85,13 +85,6 @@ export default function ContestsClient({ initialContests, platforms }) {
     });
   }, [groupedContests, groupBy]);
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserPreferences();
-      checkAdminStatus();
-    }
-  }, [currentUser]);
-
   const fetchUserPreferences = useCallback(async () => {
     if (!currentUser) return;
 
@@ -120,7 +113,28 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
   }, [currentUser]);
 
-  const toggleFavorite = async (contest) => {
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserPreferences();
+      checkAdminStatus();
+    }
+  }, [currentUser, fetchUserPreferences, checkAdminStatus]);
+
+  // Listen for platform notification changes
+  useEffect(() => {
+    const handlePlatformNotificationsChange = (event) => {
+      const { notifications: newNotifications, platformNotifications: newPlatformNotifications } = event.detail;
+      setNotifications(newNotifications);
+      setPlatformNotifications(newPlatformNotifications);
+    };
+
+    window.addEventListener('platformNotificationsChanged', handlePlatformNotificationsChange);
+    return () => {
+      window.removeEventListener('platformNotificationsChanged', handlePlatformNotificationsChange);
+    };
+  }, []);
+
+  const toggleFavorite = useCallback(async (contest) => {
     if (!currentUser) {
       toast.error('Please sign in to save favorites');
       return;
@@ -132,9 +146,13 @@ export default function ContestsClient({ initialContests, platforms }) {
         ? favorites.filter(id => id !== contestId)
         : [...favorites, contestId];
       
+      // Get current preferences to preserve all data
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
+      
       await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        ...userData,
         favorites: newFavorites,
-        notifications: notifications
       }, { merge: true });
 
       setFavorites(newFavorites);
@@ -147,7 +165,7 @@ export default function ContestsClient({ initialContests, platforms }) {
       console.error('Error updating favorites:', error);
       toast.error('Failed to update favorites');
     }
-  };
+  }, [currentUser, favorites]);
 
   const handleNotificationClick = useCallback(async (contest) => {
     if (!currentUser) {
@@ -185,6 +203,15 @@ export default function ContestsClient({ initialContests, platforms }) {
 
         setNotifications(newNotifications);
         setPlatformNotifications(newPlatformNotifications);
+
+        // Emit event for platform settings
+        window.dispatchEvent(new CustomEvent('contestNotificationsChanged', {
+          detail: { 
+            notifications: newNotifications,
+            platformNotifications: newPlatformNotifications
+          }
+        }));
+
         toast.success('Reminder disabled');
       } else {
         setSelectedContest(contest);
@@ -232,8 +259,7 @@ export default function ContestsClient({ initialContests, platforms }) {
       const updatedUserPrefs = {
         ...userData,
         notifications: newNotifications,
-        platformNotifications: newPlatformNotifications,
-        favorites: favorites
+        platformNotifications: newPlatformNotifications
       };
 
       await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedUserPrefs);
@@ -241,14 +267,23 @@ export default function ContestsClient({ initialContests, platforms }) {
       setNotifications(newNotifications);
       setPlatformNotifications(newPlatformNotifications);
       setShowNotificationDialog(false);
+
+      // Emit event for platform settings
+      window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
+        detail: { 
+          notifications: newNotifications,
+          platformNotifications: newPlatformNotifications
+        }
+      }));
+
       toast.success('Reminder set successfully');
     } catch (error) {
       console.error('Error setting reminder:', error);
       toast.error('Failed to set reminder');
     }
-  }, [currentUser, selectedContest, reminderTime, filteredContests, favorites]);
+  }, [currentUser, selectedContest, reminderTime, filteredContests]);
 
-  const testNotification = async (contest) => {
+  const testNotification = useCallback(async (contest) => {
     if (!currentUser || !isAdmin) {
       toast.error('Only admins can test notifications');
       return;
@@ -278,78 +313,76 @@ export default function ContestsClient({ initialContests, platforms }) {
       console.error('Error in test notification:', error);
       toast.error('Failed to show test notification');
     }
-  };
+  }, [currentUser, isAdmin]);
 
   // Memoize the contest card to prevent unnecessary re-renders
-  const ContestCard = useMemo(() => {
-    return ({ contest }) => {
-      const contestId = `${contest.platform}-${contest.contestName}`;
-      const formattedDate = new Date(contest.startTime).toLocaleString('en-GB', {
-        timeZone: 'Asia/Kolkata',
-        day: 'numeric',
-        weekday: 'short',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
+  const ContestCard = useCallback(({ contest }) => {
+    const contestId = `${contest.platform}-${contest.contestName}`;
+    const formattedDate = new Date(contest.startTime).toLocaleString('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      weekday: 'short',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
 
-      const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
+    const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
 
-      return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
-          <div
-            className="absolute top-0 left-0 w-full h-full bg-contain bg-center bg-no-repeat opacity-5"
-            style={{ backgroundImage: `url(${platformImage})` }}
-          ></div>
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 flex-1">
-                <a href={contest.contestLink} target="_blank" className="text-blue-500 hover:underline">
-                  {contest.contestName}
-                </a>
-              </h3>
-              <div className="flex gap-2">
+    return (
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
+        <div
+          className="absolute top-0 left-0 w-full h-full bg-contain bg-center bg-no-repeat opacity-5"
+          style={{ backgroundImage: `url(${platformImage})` }}
+        ></div>
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 flex-1">
+              <a href={contest.contestLink} target="_blank" className="text-blue-500 hover:underline">
+                {contest.contestName}
+              </a>
+            </h3>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toggleFavorite(contest)}
+                className={favorites.includes(contestId) ? "text-red-500" : ""}
+              >
+                <Heart className="h-5 w-5" fill={favorites.includes(contestId) ? "currentColor" : "none"} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleNotificationClick(contest)}
+                className={notifications[contestId] ? "text-yellow-500" : ""}
+              >
+                <Bell className="h-5 w-5" fill={notifications[contestId] ? "currentColor" : "none"} />
+              </Button>
+              {isAdmin && (
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleFavorite(contest)}
-                  className={favorites.includes(contestId) ? "text-red-500" : ""}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testNotification(contest)}
                 >
-                  <Heart className="h-5 w-5" fill={favorites.includes(contestId) ? "currentColor" : "none"} />
+                  Test
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleNotificationClick(contest)}
-                  className={notifications[contestId] ? "text-yellow-500" : ""}
-                >
-                  <Bell className="h-5 w-5" fill={notifications[contestId] ? "currentColor" : "none"} />
-                </Button>
-                {isAdmin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => testNotification(contest)}
-                  >
-                    Test
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
-            <p><strong>Platform:</strong> {contest.platform}</p>
-            <p><strong>Start Time:</strong> {formattedDate}</p>
-            <p><strong>Duration:</strong> {contest.contestDuration}</p>
-            {notifications[contestId] && (
-              <p className="text-sm text-yellow-500 mt-2">
-                Reminder set for {notifications[contestId].reminderTime} minutes before
-              </p>
-            )}
           </div>
+          <p><strong>Platform:</strong> {contest.platform}</p>
+          <p><strong>Start Time:</strong> {formattedDate}</p>
+          <p><strong>Duration:</strong> {contest.contestDuration}</p>
+          {notifications[contestId] && (
+            <p className="text-sm text-yellow-500 mt-2">
+              Reminder set for {notifications[contestId].reminderTime} minutes before
+            </p>
+          )}
         </div>
-      );
-    };
+      </div>
+    );
   }, [favorites, notifications, isAdmin, handleNotificationClick, toggleFavorite, testNotification]);
 
   return (

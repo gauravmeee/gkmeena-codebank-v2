@@ -37,13 +37,6 @@ export default function PlatformNotificationSettings({ platforms, initialContest
     return map;
   }, [platforms, initialContests]);
 
-  // Fetch user preferences when user changes or dialog opens
-  useEffect(() => {
-    if (currentUser && showSettings) {
-      fetchPlatformSettings();
-    }
-  }, [currentUser, showSettings]);
-
   const fetchPlatformSettings = useCallback(async () => {
     if (!currentUser) return;
     
@@ -58,6 +51,34 @@ export default function PlatformNotificationSettings({ platforms, initialContest
       console.error('Error fetching platform settings:', error);
     }
   }, [currentUser]);
+
+  // Load settings on mount
+  useEffect(() => {
+    if (currentUser) {
+      fetchPlatformSettings();
+    }
+  }, [currentUser, fetchPlatformSettings]);
+
+  // Refresh settings when dialog opens
+  useEffect(() => {
+    if (currentUser && showSettings) {
+      fetchPlatformSettings();
+    }
+  }, [currentUser, showSettings, fetchPlatformSettings]);
+
+  // Listen for contest notification changes
+  useEffect(() => {
+    const handleContestNotificationsChange = (event) => {
+      const { notifications: newNotifications, platformNotifications: newPlatformNotifications } = event.detail;
+      setNotifications(newNotifications);
+      setPlatformSettings(newPlatformNotifications);
+    };
+
+    window.addEventListener('contestNotificationsChanged', handleContestNotificationsChange);
+    return () => {
+      window.removeEventListener('contestNotificationsChanged', handleContestNotificationsChange);
+    };
+  }, []);
 
   // Memoize the notification check function
   const allPlatformContestsHaveNotifications = useCallback((platform) => {
