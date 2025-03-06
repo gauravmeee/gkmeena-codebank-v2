@@ -383,12 +383,19 @@ export default function ContestsClient({ initialContests, platforms }) {
       console.log('Test notification sent successfully:', responseData);
       toast.success('Test notification sent successfully');
 
-      // Show a local notification as well
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Test Notification Sent', {
-          body: 'Check your device for the test notification',
-          icon: '/assets/contests/default.png'
-        });
+      // Show a local notification using ServiceWorkerRegistration
+      if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.showNotification('Test Notification Sent', {
+            body: 'Check your device for the test notification',
+            icon: '/assets/contests/default.png',
+            tag: 'test-notification', // Add a tag to prevent duplicate notifications
+            renotify: true // Allow showing even if a notification with same tag exists
+          });
+        } catch (error) {
+          console.error('Error showing local notification:', error);
+        }
       }
     } catch (error) {
       console.error('Error in test notification:', error);

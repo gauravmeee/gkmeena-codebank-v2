@@ -154,16 +154,16 @@ export default function NotificationHandler() {
 
       if (Notification.permission === 'granted') {
         try {
-          const notification = new Notification(title, {
-            body,
-            icon: '/assets/contests/default.png'
-          });
-          
-          // Optional: Handle notification click
-          notification.onclick = () => {
-            window.focus();
-            notification.close();
-          };
+          if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(title, {
+              body,
+              icon: '/assets/contests/default.png',
+              tag: 'contest-reminder',
+              renotify: true,
+              data: { type: 'contest', url: '/contests' }
+            });
+          }
         } catch (error) {
           console.error('Error showing notification:', error);
         }
