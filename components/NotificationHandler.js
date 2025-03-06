@@ -14,25 +14,33 @@ export default function NotificationHandler() {
 
     let timeoutIds = [];
 
-    // Check for notification permission when component mounts
-    if (Notification.permission === 'default') {
-      toast.message("Would you like to receive notifications?", {
-        action: {
-          label: "Enable",
-          onClick: () => {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                toast.success("Notifications enabled successfully!");
-              } else {
-                toast.error("Notification permission denied");
-              }
-            });
-          },
-        },
-        description: "Stay updated with contest reminders",
-        duration: 10000,
-      });
-    }
+    // Check if browser supports notifications
+    const checkNotificationSupport = () => {
+      if (!('Notification' in window)) {
+        toast.error("Your browser doesn't support notifications");
+        return false;
+      }
+      return true;
+    };
+
+    // Request notification permission
+    const requestNotificationPermission = async () => {
+      if (!checkNotificationSupport()) return false;
+      
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          toast.success("Notifications enabled successfully!");
+          return true;
+        } else {
+          toast.error("Notification permission denied");
+          return false;
+        }
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        return false;
+      }
+    };
 
     const checkNotifications = async () => {
       try {
@@ -43,6 +51,12 @@ export default function NotificationHandler() {
         const userData = userPrefsDoc.data();
         let notifications = userData.notifications || {};
         const platformNotifications = userData.platformNotifications;
+
+        // If user has notifications set but no browser permission, request it
+        if ((Object.keys(notifications).length > 0 || platformNotifications) && 
+            Notification.permission !== 'granted') {
+          await requestNotificationPermission();
+        }
 
         // Clear existing timeouts
         timeoutIds.forEach(id => clearTimeout(id));
@@ -61,6 +75,9 @@ export default function NotificationHandler() {
         // Process individual contest notifications
         if (Object.keys(notifications).length > 0) {
           Object.entries(notifications).forEach(([contestId, data]) => {
+            // Skip if notification is marked as disabled
+            if (data.disabled) return;
+
             const contestTime = new Date(data.contestTime);
             const reminderTime = data.reminderTime;
             const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
@@ -91,12 +108,11 @@ export default function NotificationHandler() {
               const currentTime = new Date();
               const contestId = `${contest.platform}-${contest.contestName}`;
 
-              // Only set notification if:
-              // 1. Notification time is in the future and within next 24 hours
-              // 2. Contest doesn't already have an individual notification
+              // Skip if there's already an individual notification for this contest
+              if (notifications[contestId] && !notifications[contestId].disabled) return;
+
               if (notificationTime > currentTime && 
-                  notificationTime - currentTime <= 24 * 60 * 60 * 1000 && 
-                  !notifications[contestId]) {
+                  notificationTime - currentTime <= 24 * 60 * 60 * 1000) {
                 const timeoutId = setTimeout(() => {
                   showNotification(
                     'Contest Reminder',
@@ -111,7 +127,8 @@ export default function NotificationHandler() {
                   ...notifications,
                   [contestId]: {
                     reminderTime,
-                    contestTime: contest.startTime
+                    contestTime: contest.startTime,
+                    disabled: false
                   }
                 };
               }
@@ -128,37 +145,34 @@ export default function NotificationHandler() {
       }
     };
 
-    const showNotification = (title, body) => {
-      // Browser notification
-      if (Notification.permission === 'granted') {
-        new Notification(title, {
-          body,
-          icon: '/assets/contests/default.png'
-        });
-      } else if (Notification.permission !== 'denied') {
-        toast.message("Enable notifications?", {
-          action: {
-            label: "Enable",
-            onClick: () => {
-              Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                  toast.success("Notifications enabled!");
-                  new Notification(title, {
-                    body,
-                    icon: '/assets/contests/default.png'
-                  });
-                } else {
-                  toast.error("Notification permission denied");
-                }
-              });
-            },
-          },
-          description: "Get instant updates about contests",
-          duration: 5000,
-        });
-      }
-      // Toast notification
+    const showNotification = async (title, body) => {
+      // Always show toast notification
       toast.info(body);
+
+      // Handle browser notification
+      if (!checkNotificationSupport()) return;
+
+      if (Notification.permission === 'granted') {
+        try {
+          const notification = new Notification(title, {
+            body,
+            icon: '/assets/contests/default.png'
+          });
+          
+          // Optional: Handle notification click
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        } catch (error) {
+          console.error('Error showing notification:', error);
+        }
+      } else if (Notification.permission !== 'denied') {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          showNotification(title, body); // Retry showing notification if permission granted
+        }
+      }
     };
 
     // Initial check

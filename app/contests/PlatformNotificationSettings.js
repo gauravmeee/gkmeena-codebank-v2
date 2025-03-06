@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -21,40 +21,71 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function PlatformNotificationSettings({ platforms }) {
+export default function PlatformNotificationSettings({ platforms, initialContests }) {
   const { currentUser } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [platformSettings, setPlatformSettings] = useState({});
   const [defaultReminderTime, setDefaultReminderTime] = useState('30');
+  const [notifications, setNotifications] = useState({});
 
+  // Memoize the platform contests to avoid recalculation on every render
+  const platformContestsMap = useMemo(() => {
+    const map = {};
+    platforms.forEach(platform => {
+      map[platform] = initialContests.filter(contest => contest.platform === platform);
+    });
+    return map;
+  }, [platforms, initialContests]);
+
+  // Fetch user preferences when user changes or dialog opens
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && showSettings) {
       fetchPlatformSettings();
     }
-  }, [currentUser]);
+  }, [currentUser, showSettings]);
 
-  const fetchPlatformSettings = async () => {
+  const fetchPlatformSettings = useCallback(async () => {
+    if (!currentUser) return;
+    
     try {
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
       if (userPrefsDoc.exists()) {
         const data = userPrefsDoc.data();
         setPlatformSettings(data.platformNotifications || {});
+        setNotifications(data.notifications || {});
       }
     } catch (error) {
       console.error('Error fetching platform settings:', error);
     }
-  };
+  }, [currentUser]);
 
-  const togglePlatformNotification = async (platform) => {
+  // Memoize the notification check function
+  const allPlatformContestsHaveNotifications = useCallback((platform) => {
+    const platformContests = platformContestsMap[platform];
+    return platformContests.every(contest => {
+      const contestId = `${platform}-${contest.contestName}`;
+      return notifications[contestId];
+    });
+  }, [platformContestsMap, notifications]);
+
+  const togglePlatformNotification = useCallback(async (platform) => {
     if (!currentUser) {
       toast.error('Please sign in to manage notifications');
       return;
     }
 
     try {
+      // Get current user preferences including individual notifications
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
+      let individualNotifications = userData.notifications || {};
+      let existingPlatformNotifications = userData.platformNotifications || {};
+      
+      const isCurrentlyEnabled = existingPlatformNotifications[platform]?.enabled === true;
+      
       const newSettings = {
-        ...platformSettings,
-        [platform]: platformSettings[platform] 
+        ...existingPlatformNotifications,
+        [platform]: isCurrentlyEnabled 
           ? null 
           : { enabled: true, reminderTime: parseInt(defaultReminderTime) }
       };
@@ -66,21 +97,81 @@ export default function PlatformNotificationSettings({ platforms }) {
         }
       });
 
-      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-        platformNotifications: newSettings
-      }, { merge: true });
+      const updatedIndividualNotifications = { ...individualNotifications };
 
+      // First, remove any existing notifications for this platform
+      Object.keys(updatedIndividualNotifications).forEach(contestId => {
+        if (contestId.startsWith(`${platform}-`)) {
+          delete updatedIndividualNotifications[contestId];
+        }
+      });
+
+      // If enabling platform notifications, use the cached platform contests
+      if (newSettings[platform]) {
+        const platformContests = platformContestsMap[platform];
+        platformContests.forEach(contest => {
+          const contestId = `${platform}-${contest.contestName}`;
+          updatedIndividualNotifications[contestId] = {
+            reminderTime: newSettings[platform].reminderTime,
+            contestTime: contest.startTime
+          };
+        });
+      }
+
+      const updatedUserPrefs = {
+        ...userData,
+        platformNotifications: newSettings,
+        notifications: updatedIndividualNotifications,
+      };
+
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedUserPrefs);
+
+      // Update local state
       setPlatformSettings(newSettings);
+      setNotifications(updatedIndividualNotifications);
+
       toast.success(
-        platformSettings[platform]
+        isCurrentlyEnabled
           ? `Disabled notifications for ${platform}`
           : `Enabled notifications for ${platform}`
       );
+
+      // Emit event with updated data
+      window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
+        detail: { 
+          platform, 
+          notifications: updatedIndividualNotifications,
+          platformNotifications: newSettings
+        }
+      }));
     } catch (error) {
       console.error('Error updating platform settings:', error);
       toast.error('Failed to update notification settings');
     }
-  };
+  }, [currentUser, defaultReminderTime, platformContestsMap]);
+
+  // Memoize the platform buttons to prevent unnecessary re-renders
+  const PlatformButtons = useMemo(() => {
+    return platforms.map((platform) => {
+      const hasAllNotifications = allPlatformContestsHaveNotifications(platform);
+      return (
+        <div key={platform} className="flex items-center justify-between">
+          <span>{platform}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => togglePlatformNotification(platform)}
+            className={hasAllNotifications ? "text-yellow-500" : ""}
+          >
+            <Bell 
+              className="h-5 w-5" 
+              fill={hasAllNotifications ? "currentColor" : "none"} 
+            />
+          </Button>
+        </div>
+      );
+    });
+  }, [platforms, allPlatformContestsHaveNotifications, togglePlatformNotification]);
 
   return (
     <>
@@ -122,22 +213,7 @@ export default function PlatformNotificationSettings({ platforms }) {
 
             <div className="space-y-4">
               <h3 className="font-medium">Enable Notifications by Platform</h3>
-              {platforms.map((platform) => (
-                <div key={platform} className="flex items-center justify-between">
-                  <span>{platform}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => togglePlatformNotification(platform)}
-                    className={platformSettings[platform] ? "text-yellow-500" : ""}
-                  >
-                    <Bell 
-                      className="h-5 w-5" 
-                      fill={platformSettings[platform] ? "currentColor" : "none"} 
-                    />
-                  </Button>
-                </div>
-              ))}
+              {PlatformButtons}
             </div>
           </div>
         </DialogContent>
