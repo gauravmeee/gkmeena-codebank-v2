@@ -9,12 +9,21 @@ import { Heart, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { initializeApp, getApps } from 'firebase/app';
+import { firebaseConfig } from '@/lib/config';
 
 export default function FavoriteContests() {
   const { currentUser } = useAuth();
   const [favorites, setFavorites] = useState([]);
   const [contests, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Ensure Firebase is initialized
+  useEffect(() => {
+    if (!getApps().length) {
+      initializeApp(firebaseConfig);
+    }
+  }, []);
 
   const fetchContests = useCallback(async () => {
     try {
@@ -28,10 +37,16 @@ export default function FavoriteContests() {
       setContests(data.contests || []);
     } catch (error) {
       console.error('Error fetching contests:', error);
+      toast.error('Failed to fetch contests');
     }
   }, []);
 
   const fetchFavorites = useCallback(async () => {
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
       if (userPrefsDoc.exists()) {
@@ -39,20 +54,17 @@ export default function FavoriteContests() {
         setFavorites(data.favorites || []);
       }
       await fetchContests();
-      setLoading(false);
     } catch (error) {
       console.error('Error fetching favorites:', error);
+      toast.error('Failed to fetch favorites');
+    } finally {
       setLoading(false);
     }
   }, [currentUser, fetchContests]);
 
   useEffect(() => {
-    if (currentUser) {
-      fetchFavorites();
-    } else {
-      setLoading(false);
-    }
-  }, [currentUser, fetchFavorites]);
+    fetchFavorites();
+  }, [fetchFavorites]);
 
   const toggleFavorite = async (contest) => {
     if (!currentUser) {
