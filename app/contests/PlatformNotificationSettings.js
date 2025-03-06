@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { notificationService } from '@/lib/notificationService';
 
 export default function PlatformNotificationSettings({ platforms, initialContests }) {
   const { currentUser } = useAuth();
@@ -170,6 +171,51 @@ export default function PlatformNotificationSettings({ platforms, initialContest
       toast.error('Failed to update notification settings');
     }
   }, [currentUser, defaultReminderTime, platformContestsMap]);
+
+  const testPlatformNotification = useCallback(async (platform) => {
+    if (!currentUser) {
+      toast.error('Please sign in to test notifications');
+      return;
+    }
+
+    try {
+      // Initialize if not already initialized
+      await notificationService.init();
+      
+      // Get or refresh FCM token
+      const token = await notificationService.getFCMToken(currentUser.uid);
+      
+      if (!token) {
+        toast.error('Failed to get notification permission');
+        return;
+      }
+
+      // Send test notification through your backend
+      const response = await fetch('/api/send-test-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          data: {
+            platform, // Using the actual platform name from props
+            url: '/contests' // URL for platform settings
+          },
+          type: 'platform'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send test notification');
+      }
+
+      toast.success('Test platform notification sent successfully');
+    } catch (error) {
+      console.error('Error in test notification:', error);
+      toast.error('Failed to send test notification');
+    }
+  }, [currentUser]);
 
   // Memoize the platform buttons to prevent unnecessary re-renders
   const PlatformButtons = useMemo(() => {

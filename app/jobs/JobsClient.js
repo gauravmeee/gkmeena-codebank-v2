@@ -20,12 +20,6 @@ export default function JobsClient({ initialJobs = [] }) {
   const [favorites, setFavorites] = useState([]);
   const [notifyNewJobs, setNotifyNewJobs] = useState(false);
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserPreferences();
-    }
-  }, [currentUser, fetchUserPreferences]);
-
   const fetchUserPreferences = useCallback(async () => {
     try {
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
@@ -38,6 +32,12 @@ export default function JobsClient({ initialJobs = [] }) {
       console.error('Error fetching user preferences:', error);
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserPreferences();
+    }
+  }, [currentUser, fetchUserPreferences]);
 
   const toggleFavorite = async (job) => {
     if (!currentUser) {

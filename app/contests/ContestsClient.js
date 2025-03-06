@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import Link from 'next/link';
 import PlatformNotificationSettings from './PlatformNotificationSettings';
+import { notificationService } from '@/lib/notificationService';
 
 export default function ContestsClient({ initialContests, platforms }) {
   const { currentUser } = useAuth();
@@ -113,12 +114,29 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
   }, [currentUser]);
 
+  // Initialize notifications when user logs in
   useEffect(() => {
     if (currentUser) {
       fetchUserPreferences();
       checkAdminStatus();
+      initializeNotifications();
     }
   }, [currentUser, fetchUserPreferences, checkAdminStatus]);
+
+  const initializeNotifications = useCallback(async () => {
+    try {
+      await notificationService.init();
+      const token = await notificationService.getFCMToken(currentUser.uid);
+      
+      if (token) {
+        notificationService.setupOnMessage((payload) => {
+          console.log('Received foreground message:', payload);
+        });
+      }
+    } catch (error) {
+      console.error('Error initializing notifications:', error);
+    }
+  }, [currentUser]);
 
   // Listen for platform notification changes
   useEffect(() => {
@@ -289,29 +307,68 @@ export default function ContestsClient({ initialContests, platforms }) {
       return;
     }
 
-    if (!('Notification' in window)) {
-      toast.error("Your browser doesn't support notifications");
-      return;
-    }
+    try {
+      console.log('Testing notification for contest:', contest);
 
-    if (Notification.permission !== 'granted') {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        toast.error('Notification permission denied');
+      // Initialize if not already initialized
+      console.log('Initializing notification service...');
+      await notificationService.init();
+      
+      // Get or refresh FCM token
+      console.log('Getting FCM token...');
+      const token = await notificationService.getFCMToken(currentUser.uid);
+      
+      if (!token) {
+        console.error('Failed to get FCM token');
+        toast.error('Failed to get notification permission');
         return;
       }
-    }
 
-    try {
-      toast.success('Sending test notification...');
-      const notification = new Notification('Test Notification', {
-        body: `Test notification for ${contest.contestName}`,
-        icon: '/assets/contests/default.png'
+      console.log('Sending test notification request...');
+      // Send test notification through your backend
+      const response = await fetch('/api/send-test-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          type: 'contest',
+          notification: {
+            title: 'Test Contest Notification',
+            body: `${contest.contestName} on ${contest.platform}`
+          },
+          data: {
+            name: contest.contestName,
+            platform: contest.platform,
+            startTime: contest.startTime,
+            url: contest.contestLink,
+            type: 'contest'
+          }
+        }),
       });
-      setTimeout(() => notification.close(), 3000);
+
+      const responseData = await response.json();
+      console.log('Server response:', responseData);
+
+      if (!response.ok) {
+        console.error('Test notification error:', responseData);
+        throw new Error(responseData.error || 'Failed to send test notification');
+      }
+
+      console.log('Test notification sent successfully:', responseData);
+      toast.success('Test notification sent successfully');
+
+      // Show a local notification as well
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Test Notification Sent', {
+          body: 'Check your device for the test notification',
+          icon: '/assets/contests/default.png'
+        });
+      }
     } catch (error) {
       console.error('Error in test notification:', error);
-      toast.error('Failed to show test notification');
+      toast.error(error.message || 'Failed to send test notification');
     }
   }, [currentUser, isAdmin]);
 

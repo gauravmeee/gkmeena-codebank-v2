@@ -3,32 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Heart, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function FavoriteContests() {
   const { currentUser } = useAuth();
   const [favorites, setFavorites] = useState([]);
   const [contests, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchFavorites = useCallback(async () => {
-    try {
-      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-      if (userPrefsDoc.exists()) {
-        const data = userPrefsDoc.data();
-        setFavorites(data.favorites || []);
-        await fetchContests();
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-      setLoading(false);
-    }
-  }, [currentUser, fetchContests]);
 
   const fetchContests = useCallback(async () => {
     try {
@@ -45,6 +31,21 @@ export default function FavoriteContests() {
     }
   }, []);
 
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      if (userPrefsDoc.exists()) {
+        const data = userPrefsDoc.data();
+        setFavorites(data.favorites || []);
+      }
+      await fetchContests();
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      setLoading(false);
+    }
+  }, [currentUser, fetchContests]);
+
   useEffect(() => {
     if (currentUser) {
       fetchFavorites();
@@ -52,6 +53,28 @@ export default function FavoriteContests() {
       setLoading(false);
     }
   }, [currentUser, fetchFavorites]);
+
+  const toggleFavorite = async (contest) => {
+    if (!currentUser) {
+      toast.error('Please sign in to save favorites');
+      return;
+    }
+
+    try {
+      const contestId = `${contest.platform}-${contest.contestName}`;
+      const newFavorites = favorites.filter(id => id !== contestId);
+      
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        favorites: newFavorites
+      }, { merge: true });
+
+      setFavorites(newFavorites);
+      toast.success('Removed from favorites');
+    } catch (error) {
+      console.error('Error updating favorites:', error);
+      toast.error('Failed to update favorites');
+    }
+  };
 
   if (loading) {
     return (
@@ -107,12 +130,19 @@ export default function FavoriteContests() {
 
           return (
             <div key={`${contest.platform}-${contest.contestName}`} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
+              <button
+                onClick={() => toggleFavorite(contest)}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                aria-label="Toggle favorite"
+              >
+                <Heart className="h-5 w-5 text-red-500" fill="currentColor" />
+              </button>
               <div
                 className="absolute top-0 left-0 w-full h-full bg-contain bg-center bg-no-repeat opacity-5"
                 style={{ backgroundImage: `url(${platformImage})` }}
               ></div>
               <div className="relative z-10">
-                <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-4">
+                <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-4 pr-12">
                   <a href={contest.contestLink} target="_blank" className="text-blue-500 hover:underline">
                     {contest.contestName}
                   </a>
