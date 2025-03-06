@@ -9,21 +9,12 @@ import { Heart, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { initializeApp, getApps } from 'firebase/app';
-import { firebaseConfig } from '@/lib/config';
 
 export default function FavoriteContests() {
   const { currentUser } = useAuth();
   const [favorites, setFavorites] = useState([]);
   const [contests, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Ensure Firebase is initialized
-  useEffect(() => {
-    if (!getApps().length) {
-      initializeApp(firebaseConfig);
-    }
-  }, []);
 
   const fetchContests = useCallback(async () => {
     try {
