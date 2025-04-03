@@ -51,7 +51,7 @@ const Navbar = () => {
 
     const getLogo = () => {
         const paths = ["/notes", "/contests", "/jobs"];
-        return paths.some(path => pathname.startsWith(path)) ? "/assets/codebank.png" : "/assets/cb.png";
+        return paths.some(path => pathname.startsWith(path)) ? "/assets/icons/codebank-icon.png" : "/assets/icons/cb-icon.png";
     };
     
 
