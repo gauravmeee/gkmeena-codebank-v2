@@ -265,6 +265,87 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
   }, [currentUser]);
 
+  const testNotification = useCallback(async (contest) => {
+    if (!currentUser || !isAdmin) {
+      toast.error('Only admins can test notifications');
+      return;
+    }
+
+    try {
+      console.log('Testing notification for contest:', contest);
+
+      // Initialize if not already initialized
+      console.log('Initializing notification service...');
+      await notificationService.init();
+      
+      // Get or refresh FCM token
+      console.log('Getting FCM token...');
+      const token = await notificationService.getFCMToken(currentUser.uid);
+      
+      if (!token) {
+        console.error('Failed to get FCM token');
+        toast.error('Failed to get notification permission');
+        return;
+      }
+
+      // Set a 2-second delay before sending the notification
+      setTimeout(async () => {
+        console.log('Sending test notification request...');
+        // Send test notification through your backend
+        const response = await fetch('/api/send-test-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token,
+            type: 'contest',
+            notification: {
+              title: 'Test Contest Notification',
+              body: `${contest.contestName} on ${contest.platform}`
+            },
+            data: {
+              name: contest.contestName,
+              platform: contest.platform,
+              startTime: contest.startTime,
+              url: contest.contestLink,
+              type: 'contest'
+            }
+          }),
+        });
+
+        const responseData = await response.json();
+        console.log('Server response:', responseData);
+
+        if (!response.ok) {
+          console.error('Test notification error:', responseData);
+          throw new Error(responseData.error || 'Failed to send test notification');
+        }
+
+        console.log('Test notification sent successfully:', responseData);
+        toast.success('Test notification sent successfully');
+
+        // Show a local notification using ServiceWorkerRegistration
+        if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification('Test Notification Sent', {
+              body: 'Check your device for the test notification',
+              icon: '/assets/contests/default.png',
+              tag: 'test-notification',
+              renotify: true
+            });
+          } catch (error) {
+            console.error('Error showing local notification:', error);
+          }
+        }
+      }, 2000); // 2-second delay
+    } catch (error) {
+      console.error('Error in test notification:', error);
+      toast.error(error.message || 'Failed to send test notification');
+    }
+  }, [currentUser, isAdmin]);
+
   const setNotificationReminder = useCallback(async () => {
     if (!currentUser) {
       toast.error('Please sign in to set reminders');
@@ -272,6 +353,12 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
 
     try {
+      // If test option is selected, trigger test notification
+      if (reminderTime === 'test') {
+        await testNotification(selectedContest);
+        return;
+      }
+
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
       const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
       
@@ -323,85 +410,7 @@ export default function ContestsClient({ initialContests, platforms }) {
       console.error('Error setting reminder:', error);
       toast.error('Failed to set reminder');
     }
-  }, [currentUser, selectedContest, reminderTime, filteredContests]);
-
-  const testNotification = useCallback(async (contest) => {
-    if (!currentUser || !isAdmin) {
-      toast.error('Only admins can test notifications');
-      return;
-    }
-
-    try {
-      console.log('Testing notification for contest:', contest);
-
-      // Initialize if not already initialized
-      console.log('Initializing notification service...');
-      await notificationService.init();
-      
-      // Get or refresh FCM token
-      console.log('Getting FCM token...');
-      const token = await notificationService.getFCMToken(currentUser.uid);
-      
-      if (!token) {
-        console.error('Failed to get FCM token');
-        toast.error('Failed to get notification permission');
-        return;
-      }
-
-      console.log('Sending test notification request...');
-      // Send test notification through your backend
-      const response = await fetch('/api/send-test-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          type: 'contest',
-          notification: {
-            title: 'Test Contest Notification',
-            body: `${contest.contestName} on ${contest.platform}`
-          },
-          data: {
-            name: contest.contestName,
-            platform: contest.platform,
-            startTime: contest.startTime,
-            url: contest.contestLink,
-            type: 'contest'
-          }
-        }),
-      });
-
-      const responseData = await response.json();
-      console.log('Server response:', responseData);
-
-      if (!response.ok) {
-        console.error('Test notification error:', responseData);
-        throw new Error(responseData.error || 'Failed to send test notification');
-      }
-
-      console.log('Test notification sent successfully:', responseData);
-      toast.success('Test notification sent successfully');
-
-      // Show a local notification using ServiceWorkerRegistration
-      if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-        try {
-          const registration = await navigator.serviceWorker.ready;
-          await registration.showNotification('Test Notification Sent', {
-            body: 'Check your device for the test notification',
-            icon: '/assets/contests/default.png',
-            tag: 'test-notification', // Add a tag to prevent duplicate notifications
-            renotify: true // Allow showing even if a notification with same tag exists
-          });
-        } catch (error) {
-          console.error('Error showing local notification:', error);
-        }
-      }
-    } catch (error) {
-      console.error('Error in test notification:', error);
-      toast.error(error.message || 'Failed to send test notification');
-    }
-  }, [currentUser, isAdmin]);
+  }, [currentUser, selectedContest, reminderTime, filteredContests, testNotification]);
 
   // Memoize the contest card to prevent unnecessary re-renders
   const ContestCard = useCallback(({ contest }) => {
@@ -449,15 +458,6 @@ export default function ContestsClient({ initialContests, platforms }) {
               >
                 <Bell className="h-5 w-5" fill={notifications[contestId] ? "currentColor" : "none"} />
               </Button>
-              {isAdmin && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => testNotification(contest)}
-                >
-                  Test
-                </Button>
-              )}
             </div>
           </div>
           <p><strong>Platform:</strong> {contest.platform}</p>
@@ -471,7 +471,7 @@ export default function ContestsClient({ initialContests, platforms }) {
         </div>
       </div>
     );
-  }, [favorites, notifications, isAdmin, handleNotificationClick, toggleFavorite, testNotification]);
+  }, [favorites, notifications, handleNotificationClick, toggleFavorite]);
 
   return (
     <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
@@ -520,6 +520,7 @@ export default function ContestsClient({ initialContests, platforms }) {
                 <SelectItem value="60">1 hour before</SelectItem>
                 <SelectItem value="180">3 hours before</SelectItem>
                 <SelectItem value="1440">1 day before</SelectItem>
+                <SelectItem value="test">Test (2 sec)</SelectItem>
               </SelectContent>
             </Select>
             <div className="mt-4 flex justify-end">
