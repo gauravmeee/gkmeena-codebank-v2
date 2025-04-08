@@ -1,8 +1,8 @@
 // Give the service worker access to Firebase Messaging.
 // Note that you can only use Firebase Messaging here. Other Firebase libraries
 // are not available in the service worker.
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.6.0/firebase-messaging-compat.js');
 
 // Log when service worker starts
 console.log('[firebase-messaging-sw.js] Initializing Firebase app...');
@@ -10,12 +10,12 @@ console.log('[firebase-messaging-sw.js] Initializing Firebase app...');
 // Initialize the Firebase app in the service worker by passing in
 // your app's Firebase config object.
 firebase.initializeApp({
-  apiKey: 'AIzaSyDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-  authDomain: 'your-app.firebaseapp.com',
-  projectId: 'your-app',
-  storageBucket: 'your-app.appspot.com',
-  messagingSenderId: '123456789012',
-  appId: '1:123456789012:web:abcdef1234567890',
+  apiKey: 'AIzaSyDxGXZxXZxXZxXZxXZxXZxXZxXZxXZxXZx',
+  authDomain: 'gkmeena-codebank.firebaseapp.com',
+  projectId: 'gkmeena-codebank',
+  storageBucket: 'gkmeena-codebank.appspot.com',
+  messagingSenderId: '309464152113',
+  appId: '1:309464152113:web:9f9f9f9f9f9f9f9f9f9f9f',
   measurementId: 'G-XXXXXXXXXX'
 });
 
@@ -29,26 +29,13 @@ console.log('[firebase-messaging-sw.js] Firebase messaging initialized');
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
   
-  // Extract notification data
-  const notificationTitle = payload.notification?.title || 'New Notification';
+  // Customize notification here
+  const notificationTitle = payload.notification.title || 'New Notification';
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new notification',
-    icon: payload.notification?.icon || '/assets/contests/default.png',
-    badge: '/assets/contests/default.png',
-    data: payload.data || {},
-    tag: payload.data?.type || 'notification',
-    renotify: true,
-    requireInteraction: true,
-    actions: [
-      {
-        action: 'view',
-        title: 'View Details'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss'
-      }
-    ]
+    body: payload.notification.body || 'You have a new notification',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    data: payload.data
   };
 
   // Show the notification
@@ -77,16 +64,24 @@ self.addEventListener('notificationclick', (event) => {
   // Close the notification
   event.notification.close();
   
-  // Handle different actions
-  if (event.action === 'view') {
-    // Get the URL from the notification data or use a default
-    const url = event.notification.data?.url || '/';
-    
-    // Open the URL in a new tab
-    event.waitUntil(
-      clients.openWindow(url)
-    );
-  }
+  // Open the app or a specific URL
+  const urlToOpen = new URL('/', self.location.origin).href;
+  
+  // Check if there's already a tab open with this URL
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((windowClients) => {
+      // If a window client is found, focus it
+      for (const client of windowClients) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no window client is found, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
 
 // Handle push events
@@ -102,22 +97,9 @@ self.addEventListener('push', (event) => {
       const notificationTitle = data.notification?.title || 'New Notification';
       const notificationOptions = {
         body: data.notification?.body || 'You have a new notification',
-        icon: data.notification?.icon || '/assets/contests/default.png',
-        badge: '/assets/contests/default.png',
-        data: data.data || {},
-        tag: data.data?.type || 'notification',
-        renotify: true,
-        requireInteraction: true,
-        actions: [
-          {
-            action: 'view',
-            title: 'View Details'
-          },
-          {
-            action: 'dismiss',
-            title: 'Dismiss'
-          }
-        ]
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        data: data.data || {}
       };
       
       event.waitUntil(
