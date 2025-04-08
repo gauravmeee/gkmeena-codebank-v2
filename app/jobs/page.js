@@ -38,6 +38,9 @@ async function getJobs() {
 // Log environment only on the server side
 console.log(`Running in ${process.env.NODE_ENV} mode`);
 
+// Add this export to make the page dynamic
+export const dynamic = 'force-dynamic';
+
 export default async function JobsPage() {
   // Fetch data on the server
   const jobs = await getJobs();

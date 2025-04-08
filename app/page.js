@@ -2,6 +2,8 @@ import Head from "next/head";
 import { FaLinkedin, FaGithub } from "react-icons/fa";
 import AuthButtons from "@/components/auth/AuthButtons";
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   
   return (

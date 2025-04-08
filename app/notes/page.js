@@ -56,8 +56,6 @@ const getFolders = () => {
 
 const folders = getFolders();
 
-
-
 const FolderGrid = () => {
   return (
     // note in tailwind.config.js, xsm, sm, lg, xl, 2x are redefined
@@ -107,3 +105,6 @@ const FolderGrid = () => {
 };
 
 export default FolderGrid;
+
+// Add this export to make the page dynamic
+export const dynamic = 'force-dynamic';
