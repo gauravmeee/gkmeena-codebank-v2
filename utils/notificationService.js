@@ -6,11 +6,18 @@ const requestFCMToken = async () => {
     // Ensure VAPID key is properly formatted
     let vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
     
+    // Ensure vapidKey is a string
+    if (vapidKey && typeof vapidKey !== 'string') {
+      console.log('Converting VAPID key to string');
+      vapidKey = String(vapidKey);
+    }
+    
     // If we're in a browser environment and the key is in the wrong format
     if (typeof window !== 'undefined' && vapidKey) {
       // Only format the key if it's not already in the correct format
       // and doesn't match the expected VAPID key pattern
-      if (!vapidKey.includes('-----BEGIN PUBLIC KEY-----') && 
+      if (typeof vapidKey === 'string' && 
+          !vapidKey.includes('-----BEGIN PUBLIC KEY-----') && 
           !/^[A-Za-z0-9_-]+$/.test(vapidKey)) {
         try {
           // If it's a base64 string, try to convert it
