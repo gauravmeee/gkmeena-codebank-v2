@@ -8,9 +8,10 @@ const requestFCMToken = async () => {
     
     // If we're in a browser environment and the key is in the wrong format
     if (typeof window !== 'undefined' && vapidKey) {
-      // Check if the key is already in the correct format
-      if (!vapidKey.includes('-----BEGIN PUBLIC KEY-----')) {
-        // Try to convert the key to the correct format
+      // Only format the key if it's not already in the correct format
+      // and doesn't match the expected VAPID key pattern
+      if (!vapidKey.includes('-----BEGIN PUBLIC KEY-----') && 
+          !/^[A-Za-z0-9_-]+$/.test(vapidKey)) {
         try {
           // If it's a base64 string, try to convert it
           if (/^[A-Za-z0-9+/=]+$/.test(vapidKey)) {
@@ -21,6 +22,8 @@ const requestFCMToken = async () => {
         } catch (e) {
           console.error('Error formatting VAPID key:', e);
         }
+      } else {
+        console.log('Using VAPID key as-is (already in correct format)');
       }
     }
     
