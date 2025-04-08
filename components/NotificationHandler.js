@@ -69,7 +69,7 @@ export default function NotificationHandler() {
               console.log(`Test notification detected for ${contestId}, showing immediately`);
               
               // Send notification immediately without waiting
-              showNotification(
+              await showNotification(
                 'Test Contest Reminder',
                 `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${reminderTime} minutes! (TEST)`
               );
@@ -78,7 +78,7 @@ export default function NotificationHandler() {
               await removeNotificationImmediately(contestId);
               
               // Also update the local state to reflect the removal
-              notifications[contestId] = undefined;
+              delete notifications[contestId];
               
               return;
             }
@@ -321,6 +321,7 @@ export default function NotificationHandler() {
           
           // Update Firestore with the notification removed
           await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+            ...userData,
             notifications: newNotifications,
             lastUpdated: new Date().toISOString()
           }, { merge: true });

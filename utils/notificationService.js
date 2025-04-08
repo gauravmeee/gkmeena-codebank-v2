@@ -95,4 +95,106 @@ const registerServiceWorker = async () => {
     console.error('Error registering service worker:', error);
     return null;
   }
+};
+
+// Initialize notification service
+const init = async () => {
+  try {
+    if (isInitialized) {
+      console.log('NotificationService already initialized');
+      return true;
+    }
+
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      console.log('Not in browser environment, skipping initialization');
+      return false;
+    }
+
+    // Check if service workers are supported
+    if (!('serviceWorker' in navigator)) {
+      console.log('Service workers not supported');
+      return false;
+    }
+
+    // Check if push notifications are supported
+    if (!('PushManager' in window)) {
+      console.log('Push notifications not supported');
+      return false;
+    }
+
+    // Check notification permission
+    const permission = await Notification.requestPermission();
+    console.log('Notification permission status:', permission);
+    
+    if (permission !== 'granted') {
+      console.log('Notification permission not granted');
+      return false;
+    }
+
+    // Register service worker
+    const registration = await registerServiceWorker();
+    if (!registration) {
+      console.log('Failed to register service worker');
+      return false;
+    }
+
+    // Initialize Firebase messaging
+    console.log('Initializing Firebase messaging...');
+    if (!messaging) {
+      console.error('Firebase messaging not initialized');
+      return false;
+    }
+
+    // Set up message handler
+    onMessage(messaging, (payload) => {
+      console.log('Received foreground message:', payload);
+      if (onMessageCallback) {
+        onMessageCallback(payload);
+      }
+    });
+
+    isInitialized = true;
+    console.log('Notification service initialized successfully');
+    return true;
+  } catch (error) {
+    console.error('Error initializing notification service:', error);
+    return false;
+  }
+};
+
+// Get FCM token
+const getFCMToken = async (userId) => {
+  try {
+    if (!isInitialized) {
+      console.log('Notification service not initialized, initializing now...');
+      const initialized = await init();
+      if (!initialized) {
+        console.error('Failed to initialize notification service');
+        return null;
+      }
+    }
+
+    console.log('Getting FCM token for user:', userId);
+    const token = await requestFCMToken();
+    
+    if (token) {
+      console.log('FCM token obtained successfully:', token);
+      
+      // Save token to user document
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, {
+        fcmToken: token,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      console.log('FCM token saved to user document');
+      return token;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting FCM token:', error);
+    return null;
+  }
 }; 
