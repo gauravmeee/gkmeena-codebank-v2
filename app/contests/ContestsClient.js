@@ -176,6 +176,36 @@ export default function ContestsClient({ initialContests, platforms }) {
     };
   }, []);
 
+  // Listen for notification removal events
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleNotificationRemoved = (event) => {
+        const { contestId } = event.detail;
+        console.log(`Notification removed event received for ${contestId}`);
+        
+        // Update the local state to reflect the removal
+        setFavorites(prevFavorites => {
+          const newFavorites = { ...prevFavorites };
+          if (newFavorites[contestId]) {
+            // Remove the notification from the favorites
+            newFavorites[contestId] = {
+              ...newFavorites[contestId],
+              notification: false,
+              reminderTime: null
+            };
+          }
+          return newFavorites;
+        });
+      };
+      
+      window.addEventListener('notificationRemoved', handleNotificationRemoved);
+      
+      return () => {
+        window.removeEventListener('notificationRemoved', handleNotificationRemoved);
+      };
+    }
+  }, []);
+
   const toggleFavorite = useCallback(async (contest) => {
     if (!currentUser) {
       toast.error('Please sign in to save favorites');

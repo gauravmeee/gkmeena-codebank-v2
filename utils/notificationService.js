@@ -24,17 +24,37 @@ const requestFCMToken = async () => {
       }
     }
     
-    const currentToken = await getToken(messaging, { vapidKey });
+    // Add retry mechanism for FCM token requests
+    let retryCount = 0;
+    const maxRetries = 3;
+    let currentToken = null;
+    
+    while (retryCount < maxRetries && !currentToken) {
+      try {
+        currentToken = await getToken(messaging, { vapidKey });
+        if (currentToken) {
+          console.log('FCM token obtained successfully:', currentToken);
+          break;
+        }
+      } catch (error) {
+        console.error(`Error requesting FCM token (attempt ${retryCount + 1}/${maxRetries}):`, error);
+        retryCount++;
+        
+        // Wait before retrying
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+    }
     
     if (currentToken) {
-      console.log('FCM token obtained successfully:', currentToken);
       return currentToken;
     } else {
-      console.log('No registration token available.');
+      console.log('No registration token available after retries.');
       return null;
     }
   } catch (error) {
-    console.error('Error requesting FCM token:', error);
+    console.error('Error in requestFCMToken function:', error);
     return null;
   }
 };

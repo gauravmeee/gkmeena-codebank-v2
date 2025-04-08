@@ -44,148 +44,15 @@ export default function NotificationHandler() {
 
     const checkNotifications = async () => {
       try {
-        // Fetch user preferences
+        if (!currentUser) return;
+        
+        console.log('Checking for notifications...');
         const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
         if (!userPrefsDoc.exists()) return;
-
+        
         const userData = userPrefsDoc.data();
-        let notifications = userData.notifications || {};
-        const platformNotifications = userData.platformNotifications || {};
-
-        // If user has notifications set but no browser permission, request it
-        if ((Object.keys(notifications).length > 0 || Object.keys(platformNotifications).length > 0) && 
-            Notification.permission !== 'granted') {
-          await requestNotificationPermission();
-        }
-
-        // Clear existing timeouts
-        timeoutIds.forEach(id => clearTimeout(id));
-        timeoutIds = [];
-
-        // Fetch contests
-        const response = await fetch('https://flask-contest-api.onrender.com/', {
-          next: { 
-            revalidate: 3600,
-            tags: ['contests']
-          }
-        });
-        const data = await response.json();
-        const contests = data.contests || [];
-
-        // Process platform notifications first
-        const enabledPlatforms = Object.entries(platformNotifications)
-          .filter(([_, settings]) => settings.enabled)
-          .map(([platform]) => platform);
-
-        if (enabledPlatforms.length > 0) {
-          // Get all contests for enabled platforms
-          const platformContests = contests.filter(contest => 
-            enabledPlatforms.includes(contest.platform)
-          );
-
-          // Process each platform's contests
-          for (const platform of enabledPlatforms) {
-            const platformSettings = platformNotifications[platform];
-            const platformSpecificContests = platformContests.filter(c => c.platform === platform);
-
-            for (const contest of platformSpecificContests) {
-              const contestId = `${contest.platform}-${contest.contestName}`;
-              
-              // Skip if there's already an individual notification for this contest
-              if (notifications[contestId] && !notifications[contestId].disabled) continue;
-
-              const contestTime = new Date(contest.startTime);
-              const reminderTime = platformSettings.reminderTime;
-              const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
-              const currentTime = new Date();
-
-              // For test notifications, show immediately
-              if (notifications[contestId]?.isTest) {
-                console.log(`Test notification detected for platform ${platform}, showing immediately`);
-                
-                // Send notification immediately without waiting
-                showNotification(
-                  'Test Contest Reminder',
-                  `${contest.contestName} on ${platform} starts in ${reminderTime} minutes! (PLATFORM TEST)`
-                );
-                
-                // Disable the test notification after sending
-                disableNotification(contestId);
-                
-                continue;
-              }
-
-              // Only set notification if the time hasn't passed and it's within the next 24 hours
-              if (notificationTime > currentTime && 
-                  notificationTime - currentTime <= 24 * 60 * 60 * 1000) {
-                const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
-                const minutesUntilNotification = Math.floor(timeUntilNotification / (60 * 1000));
-                const hoursUntilNotification = Math.floor(minutesUntilNotification / 60);
-                const remainingMinutes = minutesUntilNotification % 60;
-                
-                const timeDisplay = hoursUntilNotification > 0 
-                  ? `${hoursUntilNotification}h ${remainingMinutes}m` 
-                  : `${minutesUntilNotification}m`;
-                
-                console.log(`Scheduling platform notification for ${contestId} in ${timeDisplay} (${reminderTime} minutes before contest)`);
-                
-                const timeoutId = setTimeout(async () => {
-                  const contestName = contestId.split('-')[1];
-                  const platform = contestId.split('-')[0];
-                  showNotification(
-                    'Contest Reminder',
-                    `${contestName} on ${platform} starts in ${reminderTime} minutes!`
-                  );
-                  
-                  // Immediately remove the notification from Firestore
-                  try {
-                    console.log(`Immediately removing notification for ${contestId} after sending`);
-                    const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-                    if (userPrefsDoc.exists()) {
-                      const userData = userPrefsDoc.data();
-                      const notifications = userData.notifications || {};
-                      
-                      // Create a new notifications object without this notification
-                      const newNotifications = { ...notifications };
-                      delete newNotifications[contestId];
-                      
-                      // Update Firestore immediately
-                      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-                        notifications: newNotifications,
-                        lastUpdated: new Date().toISOString()
-                      }, { merge: true });
-                      
-                      console.log(`Notification for ${contestId} removed immediately after sending`);
-                    }
-                  } catch (error) {
-                    console.error(`Error immediately removing notification for ${contestId}:`, error);
-                  }
-                }, timeUntilNotification);
-                
-                timeoutIds.push(timeoutId);
-
-                // Add to individual notifications for tracking
-                notifications = {
-                  ...notifications,
-                  [contestId]: {
-                    reminderTime,
-                    contestTime: contest.startTime,
-                    disabled: false,
-                    isPlatformNotification: true,
-                    platform: contest.platform
-                  }
-                };
-              }
-            }
-          }
-
-          // Update notifications in Firestore
-          await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-            notifications,
-            lastUpdated: new Date().toISOString()
-          }, { merge: true });
-        }
-
+        const notifications = userData.notifications || {};
+        
         // Process individual contest notifications
         if (Object.keys(notifications).length > 0) {
           Object.entries(notifications).forEach(async ([contestId, data]) => {
@@ -208,28 +75,7 @@ export default function NotificationHandler() {
               );
               
               // Immediately remove the notification from Firestore
-              try {
-                console.log(`Immediately removing test notification for ${contestId}`);
-                const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-                if (userPrefsDoc.exists()) {
-                  const userData = userPrefsDoc.data();
-                  const notifications = userData.notifications || {};
-                  
-                  // Create a new notifications object without this notification
-                  const newNotifications = { ...notifications };
-                  delete newNotifications[contestId];
-                  
-                  // Update Firestore immediately
-                  await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-                    notifications: newNotifications,
-                    lastUpdated: new Date().toISOString()
-                  }, { merge: true });
-                  
-                  console.log(`Test notification for ${contestId} removed immediately`);
-                }
-              } catch (error) {
-                console.error(`Error immediately removing test notification for ${contestId}:`, error);
-              }
+              await removeNotificationImmediately(contestId);
               
               // Also update the local state to reflect the removal
               notifications[contestId] = undefined;
@@ -237,16 +83,25 @@ export default function NotificationHandler() {
               return;
             }
             
-            // Only set notification if the time hasn't passed and it's within the next 24 hours
-            if (notificationTime > currentTime && notificationTime - currentTime <= 24 * 60 * 60 * 1000) {
-              const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
-              const minutesUntilNotification = Math.floor(timeUntilNotification / (60 * 1000));
-              const hoursUntilNotification = Math.floor(minutesUntilNotification / 60);
-              const remainingMinutes = minutesUntilNotification % 60;
+            // For regular notifications, check if it's time to show
+            if (notificationTime <= currentTime) {
+              console.log(`Time to show notification for ${contestId}`);
               
-              const timeDisplay = hoursUntilNotification > 0 
-                ? `${hoursUntilNotification}h ${remainingMinutes}m` 
-                : `${minutesUntilNotification}m`;
+              // Show the notification
+              showNotification(
+                'Contest Reminder',
+                `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${reminderTime} minutes!`
+              );
+              
+              // Immediately remove the notification from Firestore
+              await removeNotificationImmediately(contestId);
+              
+              // Also update the local state to reflect the removal
+              notifications[contestId] = undefined;
+            } else {
+              // Schedule the notification for later
+              const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
+              const timeDisplay = formatTimeUntilNotification(timeUntilNotification);
               
               console.log(`Scheduling notification for ${contestId} in ${timeDisplay} (${reminderTime} minutes before contest)`);
               
@@ -259,37 +114,11 @@ export default function NotificationHandler() {
                 );
                 
                 // Immediately remove the notification from Firestore
-                try {
-                  console.log(`Immediately removing notification for ${contestId} after sending`);
-                  const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-                  if (userPrefsDoc.exists()) {
-                    const userData = userPrefsDoc.data();
-                    const notifications = userData.notifications || {};
-                    
-                    // Create a new notifications object without this notification
-                    const newNotifications = { ...notifications };
-                    delete newNotifications[contestId];
-                    
-                    // Update Firestore immediately
-                    await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-                      notifications: newNotifications,
-                      lastUpdated: new Date().toISOString()
-                    }, { merge: true });
-                    
-                    console.log(`Notification for ${contestId} removed immediately after sending`);
-                  }
-                } catch (error) {
-                  console.error(`Error immediately removing notification for ${contestId}:`, error);
-                }
+                await removeNotificationImmediately(contestId);
               }, timeUntilNotification);
               
+              // Store the timeout ID for cleanup
               timeoutIds.push(timeoutId);
-            } else if (notificationTime <= currentTime) {
-              console.log(`Notification time has passed for ${contestId}`);
-              // Disable notifications that have already passed
-              disableNotification(contestId);
-            } else {
-              console.log(`Notification for ${contestId} is scheduled for more than 24 hours away`);
             }
           });
         }
@@ -466,6 +295,50 @@ export default function NotificationHandler() {
         }
       } catch (error) {
         console.error('Error cleaning up disabled notifications:', error);
+      }
+    };
+
+    // Function to immediately remove a notification from Firestore
+    const removeNotificationImmediately = async (contestId) => {
+      try {
+        console.log(`Immediately removing notification for ${contestId}`);
+        
+        // Get current user preferences
+        const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+        if (!userPrefsDoc.exists()) {
+          console.log(`No user preferences found for ${currentUser.uid}`);
+          return;
+        }
+
+        const userData = userPrefsDoc.data();
+        const notifications = userData.notifications || {};
+        
+        // If the notification exists, remove it completely
+        if (notifications[contestId]) {
+          // Create a new notifications object without this notification
+          const newNotifications = { ...notifications };
+          delete newNotifications[contestId];
+          
+          // Update Firestore with the notification removed
+          await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+            notifications: newNotifications,
+            lastUpdated: new Date().toISOString()
+          }, { merge: true });
+          
+          console.log(`Notification for ${contestId} removed immediately`);
+          
+          // Force a refresh of the notifications in the UI
+          if (typeof window !== 'undefined') {
+            // Dispatch a custom event to notify other components
+            window.dispatchEvent(new CustomEvent('notificationRemoved', { 
+              detail: { contestId } 
+            }));
+          }
+        } else {
+          console.log(`Notification for ${contestId} not found in user preferences`);
+        }
+      } catch (error) {
+        console.error(`Error removing notification for ${contestId}:`, error);
       }
     };
 
