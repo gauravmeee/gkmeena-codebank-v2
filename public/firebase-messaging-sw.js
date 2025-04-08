@@ -1,8 +1,8 @@
 // Give the service worker access to Firebase Messaging.
 // Note that you can only use Firebase Messaging here. Other Firebase libraries
 // are not available in the service worker.
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.6.0/firebase-messaging-compat.js');
 
 // Log when service worker starts
 console.log('[firebase-messaging-sw.js] Initializing Firebase app...');
@@ -10,12 +10,13 @@ console.log('[firebase-messaging-sw.js] Initializing Firebase app...');
 // Initialize the Firebase app in the service worker by passing in
 // your app's Firebase config object.
 firebase.initializeApp({
-  apiKey: 'AIzaSyAv-xZrl1rJsb8Syw8IFt8_j4SmWdu9uoI',
-  authDomain: 'codebank-6db5e.firebaseapp.com',
-  projectId: 'codebank-6db5e',
-  storageBucket: 'codebank-6db5e.firebasestorage.app',
-  messagingSenderId: '09464152113',
-  appId: '1:309464152113:web:703da19d79fa1f35ed3d10'
+  apiKey: 'AIzaSyDxGXZxXZxXZxXZxXZxXZxXZxXZxXZxXZx',
+  authDomain: 'gkmeena-codebank.firebaseapp.com',
+  projectId: 'gkmeena-codebank',
+  storageBucket: 'gkmeena-codebank.appspot.com',
+  messagingSenderId: '309464152113',
+  appId: '1:309464152113:web:9f9f9f9f9f9f9f9f9f9f9f',
+  measurementId: 'G-XXXXXXXXXX'
 });
 
 console.log('[firebase-messaging-sw.js] Firebase app initialized');
@@ -28,45 +29,17 @@ console.log('[firebase-messaging-sw.js] Firebase messaging initialized');
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
   
-  try {
-    const { title, body } = payload.notification || {};
-    const { type, platform } = payload.data || {};
+  // Customize notification here
+  const notificationTitle = payload.notification.title || 'New Notification';
+  const notificationOptions = {
+    body: payload.notification.body || 'You have a new notification',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    data: payload.data
+  };
 
-    console.log('[firebase-messaging-sw.js] Processing message:', { title, body, type, platform });
-
-    if (!title) {
-      console.error('[firebase-messaging-sw.js] No title in notification payload');
-      return;
-    }
-
-    // Get platform-specific icon
-    let icon = '/assets/contests/default.png';
-    if (platform) {
-      icon = `/assets/contests/${platform.toLowerCase()}.png`;
-    }
-
-    const notificationOptions = {
-      body: body || 'No message content',
-      icon: icon,
-      badge: '/assets/contests/default.png',
-      vibrate: [100, 50, 100],
-      data: payload.data || {},
-      actions: getNotificationActions(type),
-      requireInteraction: true // Keep the notification visible until user interacts with it
-    };
-
-    console.log('[firebase-messaging-sw.js] Showing notification with options:', notificationOptions);
-
-    return self.registration.showNotification(title, notificationOptions)
-      .then(() => {
-        console.log('[firebase-messaging-sw.js] Notification shown successfully');
-      })
-      .catch((error) => {
-        console.error('[firebase-messaging-sw.js] Error showing notification:', error);
-      });
-  } catch (error) {
-    console.error('[firebase-messaging-sw.js] Error processing message:', error);
-  }
+  // Show the notification
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // Log when service worker receives any message
@@ -84,58 +57,56 @@ self.addEventListener('activate', (event) => {
   console.log('[firebase-messaging-sw.js] Service Worker activated');
 });
 
-function getNotificationActions(type) {
-  switch (type) {
-    case 'contest':
-      return [
-        { action: 'view', title: 'View Contest' },
-        { action: 'dismiss', title: 'Dismiss' }
-      ];
-    case 'job':
-      return [
-        { action: 'view', title: 'View Job' },
-        { action: 'dismiss', title: 'Dismiss' }
-      ];
-    case 'platform':
-      return [
-        { action: 'settings', title: 'Settings' },
-        { action: 'dismiss', title: 'Dismiss' }
-      ];
-    default:
-      return [];
-  }
-}
-
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
+  console.log('[firebase-messaging-sw.js] Notification clicked:', event);
+  
+  // Close the notification
   event.notification.close();
-  const { type, url } = event.notification.data;
-
-  if (event.action === 'dismiss') return;
-
-  let targetUrl = '/';
-  switch (type) {
-    case 'contest':
-      targetUrl = url || '/contests';
-      break;
-    case 'job':
-      targetUrl = url || '/jobs';
-      break;
-    case 'platform':
-      targetUrl = '/contests';
-      break;
-  }
-
+  
+  // Open the app or a specific URL
+  const urlToOpen = new URL('/', self.location.origin).href;
+  
+  // Check if there's already a tab open with this URL
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
+    clients.matchAll({ type: 'window' }).then((windowClients) => {
+      // If a window client is found, focus it
+      for (const client of windowClients) {
+        if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
+      // If no window client is found, open a new one
       if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
+        return clients.openWindow(urlToOpen);
       }
     })
   );
+});
+
+// Handle push events
+self.addEventListener('push', (event) => {
+  console.log('[firebase-messaging-sw.js] Push event received:', event);
+  
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      console.log('[firebase-messaging-sw.js] Push data:', data);
+      
+      // Show notification based on the push data
+      const notificationTitle = data.notification?.title || 'New Notification';
+      const notificationOptions = {
+        body: data.notification?.body || 'You have a new notification',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        data: data.data || {}
+      };
+      
+      event.waitUntil(
+        self.registration.showNotification(notificationTitle, notificationOptions)
+      );
+    } catch (error) {
+      console.error('[firebase-messaging-sw.js] Error processing push data:', error);
+    }
+  }
 }); 
