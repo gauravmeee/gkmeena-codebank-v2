@@ -353,9 +353,96 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
 
     try {
-      // If test option is selected, trigger test notification
+      // If test option is selected, trigger test notification with dynamic timing
       if (reminderTime === 'test') {
-        await testNotification(selectedContest);
+        // Calculate time until contest starts
+        const contestTime = new Date(selectedContest.startTime);
+        const currentTime = new Date();
+        const timeUntilContest = contestTime.getTime() - currentTime.getTime();
+        const minutesUntilContest = Math.floor(timeUntilContest / (60 * 1000));
+        
+        // Use the remaining time as the reminder time
+        const dynamicReminderTime = Math.max(1, minutesUntilContest);
+        
+        console.log(`Test notification: Contest starts in ${minutesUntilContest} minutes, setting reminder for ${dynamicReminderTime} minutes before`);
+        
+        // Store the test notification with the dynamic reminder time
+        const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+        const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
+        
+        const contestId = `${selectedContest.platform}-${selectedContest.contestName}`;
+        const newNotifications = {
+          ...userData.notifications || {},
+          [contestId]: {
+            reminderTime: dynamicReminderTime,
+            contestTime: selectedContest.startTime,
+            isTest: true, // Mark as test notification
+            createdAt: new Date().toISOString() // Add creation timestamp
+          }
+        };
+
+        // Use setDoc with merge option to update only the notifications field
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+          notifications: newNotifications,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+
+        setNotifications(newNotifications);
+        setShowNotificationDialog(false);
+        
+        // Show immediate notification for test
+        toast.success(`Test notification set for ${dynamicReminderTime} minutes before contest start (${minutesUntilContest} minutes remaining)`);
+        
+        // Send a direct test notification
+        try {
+          // Initialize if not already initialized
+          await notificationService.init();
+          
+          // Get or refresh FCM token
+          const token = await notificationService.getFCMToken(currentUser.uid);
+          
+          if (token) {
+            // Send test notification through your backend
+            const response = await fetch('/api/send-test-notification', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                token,
+                type: 'contest',
+                notification: {
+                  title: 'Test Contest Notification',
+                  body: `${selectedContest.contestName} on ${selectedContest.platform}`
+                },
+                data: {
+                  name: selectedContest.contestName,
+                  platform: selectedContest.platform,
+                  startTime: selectedContest.startTime,
+                  url: selectedContest.contestLink,
+                  type: 'contest'
+                }
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('Test notification error:', await response.json());
+            } else {
+              console.log('Test notification sent successfully');
+            }
+          }
+        } catch (error) {
+          console.error('Error sending test notification:', error);
+        }
+        
+        // Trigger the notification handler to process this immediately
+        window.dispatchEvent(new CustomEvent('contestNotificationsChanged', {
+          detail: { 
+            notifications: newNotifications,
+            platformNotifications: userData.platformNotifications || {}
+          }
+        }));
+        
         return;
       }
 
@@ -367,7 +454,8 @@ export default function ContestsClient({ initialContests, platforms }) {
         ...userData.notifications || {},
         [contestId]: {
           reminderTime: parseInt(reminderTime),
-          contestTime: selectedContest.startTime
+          contestTime: selectedContest.startTime,
+          createdAt: new Date().toISOString() // Add creation timestamp
         }
       };
 
@@ -379,7 +467,8 @@ export default function ContestsClient({ initialContests, platforms }) {
       if (allPlatformContestsHaveNotifications) {
         newPlatformNotifications[selectedContest.platform] = {
           enabled: true,
-          reminderTime: parseInt(reminderTime)
+          reminderTime: parseInt(reminderTime),
+          updatedAt: new Date().toISOString() // Add update timestamp
         };
       } else {
         delete newPlatformNotifications[selectedContest.platform];
@@ -388,10 +477,12 @@ export default function ContestsClient({ initialContests, platforms }) {
       const updatedUserPrefs = {
         ...userData,
         notifications: newNotifications,
-        platformNotifications: newPlatformNotifications
+        platformNotifications: newPlatformNotifications,
+        lastUpdated: new Date().toISOString() // Add last updated timestamp
       };
 
-      await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedUserPrefs);
+      // Use setDoc with merge option to update only changed fields
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedUserPrefs, { merge: true });
 
       setNotifications(newNotifications);
       setPlatformNotifications(newPlatformNotifications);
@@ -410,7 +501,7 @@ export default function ContestsClient({ initialContests, platforms }) {
       console.error('Error setting reminder:', error);
       toast.error('Failed to set reminder');
     }
-  }, [currentUser, selectedContest, reminderTime, filteredContests, testNotification]);
+  }, [currentUser, selectedContest, reminderTime, filteredContests]);
 
   // Memoize the contest card to prevent unnecessary re-renders
   const ContestCard = useCallback(({ contest }) => {
@@ -427,6 +518,29 @@ export default function ContestsClient({ initialContests, platforms }) {
     });
 
     const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
+    
+    // Calculate time until notification if one is set
+    let notificationInfo = null;
+    if (notifications[contestId]) {
+      const contestTime = new Date(contest.startTime);
+      const reminderTime = notifications[contestId].reminderTime;
+      const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
+      const currentTime = new Date();
+      
+      if (notificationTime > currentTime) {
+        const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
+        const hoursUntilNotification = Math.floor(timeUntilNotification / (60 * 60 * 1000));
+        const minutesUntilNotification = Math.floor((timeUntilNotification % (60 * 60 * 1000)) / (60 * 1000));
+        
+        notificationInfo = {
+          timeUntil: hoursUntilNotification > 0 
+            ? `${hoursUntilNotification}h ${minutesUntilNotification}m` 
+            : `${minutesUntilNotification}m`,
+          reminderTime,
+          isTest: notifications[contestId].isTest || false
+        };
+      }
+    }
 
     return (
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg relative">
@@ -466,6 +580,12 @@ export default function ContestsClient({ initialContests, platforms }) {
           {notifications[contestId] && (
             <p className="text-sm text-yellow-500 mt-2">
               Reminder set for {notifications[contestId].reminderTime} minutes before
+              {notificationInfo && (
+                <span> (Notification in {notificationInfo.timeUntil})</span>
+              )}
+              {notificationInfo?.isTest && (
+                <span className="ml-1 text-xs">(TEST)</span>
+              )}
             </p>
           )}
         </div>
