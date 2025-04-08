@@ -503,6 +503,178 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
   }, [currentUser, selectedContest, reminderTime, filteredContests]);
 
+  const handlePlatformNotification = useCallback(async (platform, isTest = false) => {
+    if (!currentUser) {
+      toast.error('Please sign in to set reminders');
+      return;
+    }
+
+    try {
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
+      const platformNotifications = userData.platformNotifications || {};
+      const currentPlatformSettings = platformNotifications[platform] || { enabled: false };
+
+      // If this is a test notification, we'll handle it differently
+      if (isTest) {
+        // Get all contests for this platform
+        const platformContests = filteredContests.filter(c => c.platform === platform);
+        if (platformContests.length === 0) {
+          toast.error('No contests found for this platform to test');
+          return;
+        }
+
+        // Use the first upcoming contest for testing
+        const testContest = platformContests[0];
+        const contestTime = new Date(testContest.startTime);
+        const currentTime = new Date();
+        const timeUntilContest = contestTime.getTime() - currentTime.getTime();
+        const minutesUntilContest = Math.floor(timeUntilContest / (60 * 1000));
+        
+        // Use the remaining time as the reminder time
+        const dynamicReminderTime = Math.max(1, minutesUntilContest);
+        
+        console.log(`Test notification for platform ${platform}: Contest starts in ${minutesUntilContest} minutes, setting reminder for ${dynamicReminderTime} minutes before`);
+        
+        const contestId = `${testContest.platform}-${testContest.contestName}`;
+        const newNotifications = {
+          ...userData.notifications || {},
+          [contestId]: {
+            reminderTime: dynamicReminderTime,
+            contestTime: testContest.startTime,
+            isTest: true,
+            isPlatformNotification: true,
+            platform: testContest.platform,
+            createdAt: new Date().toISOString()
+          }
+        };
+
+        // Update Firestore
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+          notifications: newNotifications,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+
+        setNotifications(newNotifications);
+        
+        // Show immediate notification for test
+        toast.success(`Test notification set for ${platform} (${dynamicReminderTime} minutes before contest start)`);
+        
+        // Send a direct test notification
+        try {
+          // Initialize if not already initialized
+          await notificationService.init();
+          
+          // Get or refresh FCM token
+          const token = await notificationService.getFCMToken(currentUser.uid);
+          
+          if (token) {
+            // Send test notification through your backend
+            const response = await fetch('/api/send-test-notification', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                token,
+                type: 'contest',
+                notification: {
+                  title: `Test ${platform} Contest Notification`,
+                  body: `${testContest.contestName} on ${platform} (Platform Test)`
+                },
+                data: {
+                  name: testContest.contestName,
+                  platform: platform,
+                  startTime: testContest.startTime,
+                  url: testContest.contestLink,
+                  type: 'contest'
+                }
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('Test notification error:', await response.json());
+            } else {
+              console.log('Test notification sent successfully');
+            }
+          }
+        } catch (error) {
+          console.error('Error sending test notification:', error);
+        }
+        
+        // Trigger the notification handler to process this immediately
+        window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
+          detail: { 
+            notifications: newNotifications,
+            platformNotifications: platformNotifications
+          }
+        }));
+        
+        return;
+      }
+
+      // Regular platform notification toggle
+      const newPlatformNotifications = {
+        ...platformNotifications,
+        [platform]: {
+          enabled: !currentPlatformSettings.enabled,
+          reminderTime: currentPlatformSettings.reminderTime || 30, // Default to 30 minutes if not set
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      // Update Firestore
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        platformNotifications: newPlatformNotifications,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+
+      setPlatformNotifications(newPlatformNotifications);
+
+      // If enabling platform notifications, add all current platform contests
+      if (!currentPlatformSettings.enabled) {
+        const platformContests = filteredContests.filter(c => c.platform === platform);
+        const notifications = userData.notifications || {};
+        const newNotifications = { ...notifications };
+
+        platformContests.forEach(contest => {
+          const contestId = `${contest.platform}-${contest.contestName}`;
+          if (!notifications[contestId]) {
+            newNotifications[contestId] = {
+              reminderTime: newPlatformNotifications[platform].reminderTime,
+              contestTime: contest.startTime,
+              disabled: false,
+              isPlatformNotification: true,
+              platform: contest.platform,
+              createdAt: new Date().toISOString()
+            };
+          }
+        });
+
+        // Update notifications in Firestore
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+          notifications: newNotifications,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+
+        setNotifications(newNotifications);
+      }
+
+      // Emit event for notification handler
+      window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
+        detail: { 
+          notifications: userData.notifications || {},
+          platformNotifications: newPlatformNotifications
+        }
+      }));
+
+      toast.success(`${platform} notifications ${!currentPlatformSettings.enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error toggling platform notification:', error);
+      toast.error('Failed to update platform notifications');
+    }
+  }, [currentUser, filteredContests]);
+
   // Memoize the contest card to prevent unnecessary re-renders
   const ContestCard = useCallback(({ contest }) => {
     const contestId = `${contest.platform}-${contest.contestName}`;

@@ -47,8 +47,8 @@ messaging.onBackgroundMessage((payload) => {
 
     const notificationOptions = {
       body: body || 'No message content',
-      icon: icon,
-      badge: '/assets/contests/default.png',
+      icon: self.location.origin + icon,
+      badge: self.location.origin + '/assets/contests/default.png',
       vibrate: [100, 50, 100],
       data: payload.data || {},
       actions: getNotificationActions(type),

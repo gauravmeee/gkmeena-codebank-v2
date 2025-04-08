@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Heart, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { notificationService } from '@/lib/notificationService';
 
 export default function JobsClient({ initialJobs = [] }) {
   const { currentUser } = useAuth();
@@ -19,6 +20,8 @@ export default function JobsClient({ initialJobs = [] }) {
   const [jobs] = useState(initialJobs);
   const [favorites, setFavorites] = useState([]);
   const [notifyNewJobs, setNotifyNewJobs] = useState(false);
+  const [companyNotifications, setCompanyNotifications] = useState({});
+  const [jobNotifications, setJobNotifications] = useState({});
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -27,6 +30,8 @@ export default function JobsClient({ initialJobs = [] }) {
         const data = userPrefsDoc.data();
         setFavorites(data.jobFavorites || []);
         setNotifyNewJobs(data.notifyNewJobs || false);
+        setCompanyNotifications(data.companyNotifications || {});
+        setJobNotifications(data.jobNotifications || {});
       }
     } catch (error) {
       console.error('Error fetching user preferences:', error);
@@ -133,6 +138,177 @@ export default function JobsClient({ initialJobs = [] }) {
       ).sort((a, b) => new Date(b[0]) - new Date(a[0]))
     : null;
 
+  const handleCompanyNotification = useCallback(async (company, isTest = false) => {
+    if (!currentUser) {
+      toast.error('Please sign in to set reminders');
+      return;
+    }
+
+    try {
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
+      const companyNotifications = userData.companyNotifications || {};
+      const currentCompanySettings = companyNotifications[company] || { enabled: false };
+
+      // If this is a test notification, we'll handle it differently
+      if (isTest) {
+        // Get all jobs for this company
+        const companyJobs = filteredJobs.filter(j => j.company === company);
+        if (companyJobs.length === 0) {
+          toast.error('No jobs found for this company to test');
+          return;
+        }
+
+        // Use the first job for testing
+        const testJob = companyJobs[0];
+        const jobTime = new Date(testJob.postedDate);
+        const currentTime = new Date();
+        const timeUntilJob = jobTime.getTime() - currentTime.getTime();
+        const minutesUntilJob = Math.floor(timeUntilJob / (60 * 1000));
+        
+        // Use the remaining time as the reminder time
+        const dynamicReminderTime = Math.max(1, minutesUntilJob);
+        
+        console.log(`Test notification for company ${company}: Job posted ${minutesUntilJob} minutes ago, setting reminder for ${dynamicReminderTime} minutes`);
+        
+        const jobId = `${testJob.company}-${testJob.title}`;
+        const newNotifications = {
+          ...userData.jobNotifications || {},
+          [jobId]: {
+            reminderTime: dynamicReminderTime,
+            jobTime: testJob.postedDate,
+            isTest: true,
+            isCompanyNotification: true,
+            company: testJob.company,
+            createdAt: new Date().toISOString()
+          }
+        };
+
+        // Update Firestore
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+          jobNotifications: newNotifications,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+
+        setJobNotifications(newNotifications);
+        
+        // Show immediate notification for test
+        toast.success(`Test notification set for ${company} (${dynamicReminderTime} minutes)`);
+        
+        // Send a direct test notification
+        try {
+          // Initialize if not already initialized
+          await notificationService.init();
+          
+          // Get or refresh FCM token
+          const token = await notificationService.getFCMToken(currentUser.uid);
+          
+          if (token) {
+            // Send test notification through your backend
+            const response = await fetch('/api/send-test-notification', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                token,
+                type: 'job',
+                notification: {
+                  title: `Test ${company} Job Alert`,
+                  body: `${testJob.title} at ${company} (Company Test)`
+                },
+                data: {
+                  title: testJob.title,
+                  company: company,
+                  postedDate: testJob.postedDate,
+                  url: testJob.url,
+                  type: 'job'
+                }
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('Test notification error:', await response.json());
+            } else {
+              console.log('Test notification sent successfully');
+            }
+          }
+        } catch (error) {
+          console.error('Error sending test notification:', error);
+        }
+        
+        // Trigger the notification handler to process this immediately
+        window.dispatchEvent(new CustomEvent('companyNotificationsChanged', {
+          detail: { 
+            notifications: newNotifications,
+            companyNotifications: companyNotifications
+          }
+        }));
+        
+        return;
+      }
+
+      // Regular company notification toggle
+      const newCompanyNotifications = {
+        ...companyNotifications,
+        [company]: {
+          enabled: !currentCompanySettings.enabled,
+          reminderTime: currentCompanySettings.reminderTime || 30, // Default to 30 minutes if not set
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      // Update Firestore
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        companyNotifications: newCompanyNotifications,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+
+      setCompanyNotifications(newCompanyNotifications);
+
+      // If enabling company notifications, add all current company jobs
+      if (!currentCompanySettings.enabled) {
+        const companyJobs = filteredJobs.filter(j => j.company === company);
+        const notifications = userData.jobNotifications || {};
+        const newNotifications = { ...notifications };
+
+        companyJobs.forEach(job => {
+          const jobId = `${job.company}-${job.title}`;
+          if (!notifications[jobId]) {
+            newNotifications[jobId] = {
+              reminderTime: newCompanyNotifications[company].reminderTime,
+              jobTime: job.postedDate,
+              disabled: false,
+              isCompanyNotification: true,
+              company: job.company,
+              createdAt: new Date().toISOString()
+            };
+          }
+        });
+
+        // Update notifications in Firestore
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+          jobNotifications: newNotifications,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+
+        setJobNotifications(newNotifications);
+      }
+
+      // Emit event for notification handler
+      window.dispatchEvent(new CustomEvent('companyNotificationsChanged', {
+        detail: { 
+          notifications: userData.jobNotifications || {},
+          companyNotifications: newCompanyNotifications
+        }
+      }));
+
+      toast.success(`${company} notifications ${!currentCompanySettings.enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Error toggling company notification:', error);
+      toast.error('Failed to update company notifications');
+    }
+  }, [currentUser, filteredJobs]);
 
   return (
     <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">

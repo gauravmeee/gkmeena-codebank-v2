@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
-export default function NotificationHandler() {
+export default function JobNotificationHandler() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -49,11 +49,11 @@ export default function NotificationHandler() {
         if (!userPrefsDoc.exists()) return;
 
         const userData = userPrefsDoc.data();
-        let notifications = userData.notifications || {};
-        const platformNotifications = userData.platformNotifications || {};
+        let notifications = userData.jobNotifications || {};
+        const companyNotifications = userData.companyNotifications || {};
 
         // If user has notifications set but no browser permission, request it
-        if ((Object.keys(notifications).length > 0 || Object.keys(platformNotifications).length > 0) && 
+        if ((Object.keys(notifications).length > 0 || Object.keys(companyNotifications).length > 0) && 
             Notification.permission !== 'granted') {
           await requestNotificationPermission();
         }
@@ -62,55 +62,50 @@ export default function NotificationHandler() {
         timeoutIds.forEach(id => clearTimeout(id));
         timeoutIds = [];
 
-        // Fetch contests
-        const response = await fetch('https://flask-contest-api.onrender.com/', {
-          next: { 
-            revalidate: 3600,
-            tags: ['contests']
-          }
-        });
+        // Fetch jobs
+        const response = await fetch('/api/jobs');
         const data = await response.json();
-        const contests = data.contests || [];
+        const jobs = data.jobs || [];
 
-        // Process platform notifications first
-        const enabledPlatforms = Object.entries(platformNotifications)
+        // Process company notifications first
+        const enabledCompanies = Object.entries(companyNotifications)
           .filter(([_, settings]) => settings.enabled)
-          .map(([platform]) => platform);
+          .map(([company]) => company);
 
-        if (enabledPlatforms.length > 0) {
-          // Get all contests for enabled platforms
-          const platformContests = contests.filter(contest => 
-            enabledPlatforms.includes(contest.platform)
+        if (enabledCompanies.length > 0) {
+          // Get all jobs for enabled companies
+          const companyJobs = jobs.filter(job => 
+            enabledCompanies.includes(job.company)
           );
 
-          // Process each platform's contests
-          for (const platform of enabledPlatforms) {
-            const platformSettings = platformNotifications[platform];
-            const platformSpecificContests = platformContests.filter(c => c.platform === platform);
+          // Process each company's jobs
+          for (const company of enabledCompanies) {
+            const companySettings = companyNotifications[company];
+            const companySpecificJobs = companyJobs.filter(j => j.company === company);
 
-            for (const contest of platformSpecificContests) {
-              const contestId = `${contest.platform}-${contest.contestName}`;
+            for (const job of companySpecificJobs) {
+              const jobId = `${job.company}-${job.title}`;
               
-              // Skip if there's already an individual notification for this contest
-              if (notifications[contestId] && !notifications[contestId].disabled) continue;
+              // Skip if there's already an individual notification for this job
+              if (notifications[jobId] && !notifications[jobId].disabled) continue;
 
-              const contestTime = new Date(contest.startTime);
-              const reminderTime = platformSettings.reminderTime;
-              const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
+              const jobTime = new Date(job.postedDate);
+              const reminderTime = companySettings.reminderTime;
+              const notificationTime = new Date(jobTime.getTime() - (reminderTime * 60 * 1000));
               const currentTime = new Date();
 
               // For test notifications, show immediately
-              if (notifications[contestId]?.isTest) {
-                console.log(`Test notification detected for platform ${platform}, showing immediately`);
+              if (notifications[jobId]?.isTest) {
+                console.log(`Test notification detected for company ${company}, showing immediately`);
                 
                 // Send notification immediately without waiting
                 showNotification(
-                  'Test Contest Reminder',
-                  `${contest.contestName} on ${platform} starts in ${reminderTime} minutes! (PLATFORM TEST)`
+                  'Test Job Alert',
+                  `New job at ${job.company}: ${job.title} (COMPANY TEST)`
                 );
                 
                 // Disable the test notification after sending
-                disableNotification(contestId);
+                disableNotification(jobId);
                 
                 continue;
               }
@@ -127,16 +122,16 @@ export default function NotificationHandler() {
                   ? `${hoursUntilNotification}h ${remainingMinutes}m` 
                   : `${minutesUntilNotification}m`;
                 
-                console.log(`Scheduling platform notification for ${contestId} in ${timeDisplay} (${reminderTime} minutes before contest)`);
+                console.log(`Scheduling company notification for ${jobId} in ${timeDisplay} (${reminderTime} minutes before job posting)`);
                 
                 const timeoutId = setTimeout(() => {
                   showNotification(
-                    'Contest Reminder',
-                    `${contest.contestName} on ${contest.platform} starts in ${reminderTime} minutes!`
+                    'New Job Alert',
+                    `New job at ${job.company}: ${job.title}`
                   );
                   
                   // Disable the notification after sending
-                  disableNotification(contestId);
+                  disableNotification(jobId);
                 }, timeUntilNotification);
                 
                 timeoutIds.push(timeoutId);
@@ -144,12 +139,12 @@ export default function NotificationHandler() {
                 // Add to individual notifications for tracking
                 notifications = {
                   ...notifications,
-                  [contestId]: {
+                  [jobId]: {
                     reminderTime,
-                    contestTime: contest.startTime,
+                    jobTime: job.postedDate,
                     disabled: false,
-                    isPlatformNotification: true,
-                    platform: contest.platform
+                    isCompanyNotification: true,
+                    company: job.company
                   }
                 };
               }
@@ -158,34 +153,34 @@ export default function NotificationHandler() {
 
           // Update notifications in Firestore
           await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-            notifications,
+            jobNotifications: notifications,
             lastUpdated: new Date().toISOString()
           }, { merge: true });
         }
 
-        // Process individual contest notifications
+        // Process individual job notifications
         if (Object.keys(notifications).length > 0) {
-          Object.entries(notifications).forEach(([contestId, data]) => {
-            // Skip if notification is marked as disabled or is a platform notification
-            if (data.disabled || (data.isPlatformNotification && !data.isTest)) return;
+          Object.entries(notifications).forEach(([jobId, data]) => {
+            // Skip if notification is marked as disabled or is a company notification
+            if (data.disabled || (data.isCompanyNotification && !data.isTest)) return;
 
-            const contestTime = new Date(data.contestTime);
+            const jobTime = new Date(data.jobTime);
             const reminderTime = data.reminderTime;
-            const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
+            const notificationTime = new Date(jobTime.getTime() - (reminderTime * 60 * 1000));
             const currentTime = new Date();
             
             // For test notifications, show immediately
             if (data.isTest) {
-              console.log(`Test notification detected for ${contestId}, showing immediately`);
+              console.log(`Test notification detected for ${jobId}, showing immediately`);
               
               // Send notification immediately without waiting
               showNotification(
-                'Test Contest Reminder',
-                `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${reminderTime} minutes! (TEST)`
+                'Test Job Alert',
+                `${jobId.split('-')[1]} at ${jobId.split('-')[0]} (TEST)`
               );
               
               // Disable the test notification after sending
-              disableNotification(contestId);
+              disableNotification(jobId);
               
               return;
             }
@@ -201,27 +196,27 @@ export default function NotificationHandler() {
                 ? `${hoursUntilNotification}h ${remainingMinutes}m` 
                 : `${minutesUntilNotification}m`;
               
-              console.log(`Scheduling notification for ${contestId} in ${timeDisplay} (${reminderTime} minutes before contest)`);
+              console.log(`Scheduling notification for ${jobId} in ${timeDisplay} (${reminderTime} minutes before job posting)`);
               
               const timeoutId = setTimeout(() => {
-                const contestName = contestId.split('-')[1];
-                const platform = contestId.split('-')[0];
+                const jobTitle = jobId.split('-')[1];
+                const company = jobId.split('-')[0];
                 showNotification(
-                  'Contest Reminder',
-                  `${contestName} on ${platform} starts in ${reminderTime} minutes!`
+                  'New Job Alert',
+                  `${jobTitle} at ${company}`
                 );
                 
                 // Disable the notification after sending
-                disableNotification(contestId);
+                disableNotification(jobId);
               }, timeUntilNotification);
               
               timeoutIds.push(timeoutId);
             } else if (notificationTime <= currentTime) {
-              console.log(`Notification time has passed for ${contestId}`);
+              console.log(`Notification time has passed for ${jobId}`);
               // Disable notifications that have already passed
-              disableNotification(contestId);
+              disableNotification(jobId);
             } else {
-              console.log(`Notification for ${contestId} is scheduled for more than 24 hours away`);
+              console.log(`Notification for ${jobId} is scheduled for more than 24 hours away`);
             }
           });
         }
@@ -241,13 +236,12 @@ export default function NotificationHandler() {
         try {
           if ('serviceWorker' in navigator) {
             const registration = await navigator.serviceWorker.ready;
-            const baseUrl = window.location.origin;
             await registration.showNotification(title, {
               body,
-              icon: `${baseUrl}/assets/contests/default.png`,
-              tag: 'contest-reminder',
+              icon: '/assets/jobs/default.png',
+              tag: 'job-alert',
               renotify: true,
-              data: { type: 'contest', url: '/contests' }
+              data: { type: 'job', url: '/jobs' }
             });
           }
         } catch (error) {
@@ -262,30 +256,29 @@ export default function NotificationHandler() {
     };
 
     // Function to disable a notification after it's sent
-    const disableNotification = async (contestId) => {
+    const disableNotification = async (jobId) => {
       try {
-        console.log(`Removing notification for ${contestId}`);
+        console.log(`Disabling notification for ${jobId}`);
         const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
         if (!userPrefsDoc.exists()) return;
 
         const userData = userPrefsDoc.data();
-        const notifications = userData.notifications || {};
+        const notifications = userData.jobNotifications || {};
         
-        // If the notification exists, remove it completely
-        if (notifications[contestId]) {
-          const newNotifications = { ...notifications };
-          delete newNotifications[contestId];
+        // If the notification exists, mark it as disabled
+        if (notifications[jobId]) {
+          notifications[jobId].disabled = true;
           
-          // Update Firestore with the notification removed
+          // Update Firestore
           await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-            notifications: newNotifications,
+            jobNotifications: notifications,
             lastUpdated: new Date().toISOString()
           }, { merge: true });
           
-          console.log(`Notification for ${contestId} removed successfully`);
+          console.log(`Notification for ${jobId} disabled successfully`);
         }
       } catch (error) {
-        console.error('Error removing notification:', error);
+        console.error('Error disabling notification:', error);
       }
     };
 
