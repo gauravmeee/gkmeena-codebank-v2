@@ -1,3 +1,9 @@
+// Add these flags at the top of your notificationService.js
+let isInitialized = false;
+let isInitializing = false;
+let onMessageCallback = null;
+let messageHandlerUnsubscribe = null;
+
 // Request FCM token with VAPID key
 const requestFCMToken = async () => {
   try {
@@ -73,17 +79,16 @@ const requestFCMToken = async () => {
 const registerServiceWorker = async () => {
   try {
     if ('serviceWorker' in navigator) {
-      console.log('Registering new service worker...');
-      
-      // Get all existing service workers
+      // First check if we already have a service worker with the right scope
       const registrations = await navigator.serviceWorker.getRegistrations();
-      console.log('Existing service workers:', registrations.length);
+      const existingRegistration = registrations.find(reg => reg.scope === '/');
       
-      // Unregister all existing service workers
-      for (const registration of registrations) {
-        console.log('Unregistering service worker:', registration.scope);
-        await registration.unregister();
+      if (existingRegistration) {
+        console.log('Service worker already registered with scope:', existingRegistration.scope);
+        return existingRegistration;
       }
+      
+      console.log('Registering new service worker...');
       
       // Register new service worker
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
@@ -115,21 +120,36 @@ const init = async () => {
       return true;
     }
 
+    // Prevent multiple simultaneous initializations
+    if (isInitializing) {
+      console.log('NotificationService initialization already in progress');
+      // Wait for initialization to complete
+      while (isInitializing) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return isInitialized;
+    }
+
+    isInitializing = true;
+
     // Check if we're in a browser environment
     if (typeof window === 'undefined') {
       console.log('Not in browser environment, skipping initialization');
+      isInitializing = false;
       return false;
     }
 
     // Check if service workers are supported
     if (!('serviceWorker' in navigator)) {
       console.log('Service workers not supported');
+      isInitializing = false;
       return false;
     }
 
     // Check if push notifications are supported
     if (!('PushManager' in window)) {
       console.log('Push notifications not supported');
+      isInitializing = false;
       return false;
     }
 
@@ -139,6 +159,7 @@ const init = async () => {
     
     if (permission !== 'granted') {
       console.log('Notification permission not granted');
+      isInitializing = false;
       return false;
     }
 
@@ -146,6 +167,7 @@ const init = async () => {
     const registration = await registerServiceWorker();
     if (!registration) {
       console.log('Failed to register service worker');
+      isInitializing = false;
       return false;
     }
 
@@ -153,22 +175,17 @@ const init = async () => {
     console.log('Initializing Firebase messaging...');
     if (!messaging) {
       console.error('Firebase messaging not initialized');
+      isInitializing = false;
       return false;
     }
 
-    // Set up message handler
-    onMessage(messaging, (payload) => {
-      console.log('Received foreground message:', payload);
-      if (onMessageCallback) {
-        onMessageCallback(payload);
-      }
-    });
-
     isInitialized = true;
+    isInitializing = false;
     console.log('Notification service initialized successfully');
     return true;
   } catch (error) {
     console.error('Error initializing notification service:', error);
+    isInitializing = false;
     return false;
   }
 };
@@ -207,4 +224,74 @@ const getFCMToken = async (userId) => {
     console.error('Error getting FCM token:', error);
     return null;
   }
+};
+
+// Handle foreground messages
+const setupOnMessage = (callback) => {
+  if (typeof window === 'undefined') return;
+  
+  // Clean up existing handler if there is one
+  if (messageHandlerUnsubscribe) {
+    console.log('Cleaning up previous message handler');
+    messageHandlerUnsubscribe();
+    messageHandlerUnsubscribe = null;
+  }
+  
+  console.log('Setting up new onMessage handler...');
+  onMessageCallback = callback;
+  
+  // Store the unsubscribe function
+  messageHandlerUnsubscribe = onMessage(messaging, (payload) => {
+    console.log('[notificationService] Received foreground message:', payload);
+    
+    // Skip if this is a test notification (it will be handled by the service worker)
+    if (payload.data && payload.data.isTest) {
+      console.log('[notificationService] Skipping test notification in foreground');
+      return;
+    }
+    
+    // Only show notification if the app is in foreground and visible
+    if (document.visibilityState === 'visible') {
+      // Customize notification here
+      const notificationTitle = payload.notification.title || 'New Notification';
+      const notificationOptions = {
+        body: payload.notification.body || 'You have a new notification',
+        icon: payload.data?.platform ? `/assets/contests/${payload.data.platform.toLowerCase()}.png` : '/assets/contests/default.png',
+        badge: '/assets/contests/default.png',
+        data: payload.data,
+        tag: 'contest-reminder',
+        requireInteraction: true
+      };
+
+      // Check if a notification with the same tag is already showing
+      navigator.serviceWorker.ready.then(registration => {
+        registration.getNotifications({ tag: 'contest-reminder' })
+          .then(notifications => {
+            if (notifications.length > 0) {
+              console.log('[notificationService] Notification with same tag already exists, skipping');
+              return;
+            }
+            
+            // Show the notification
+            return registration.showNotification(notificationTitle, notificationOptions);
+          })
+          .catch(error => {
+            console.error('[notificationService] Error checking existing notifications:', error);
+          });
+      });
+    }
+    
+    if (onMessageCallback) onMessageCallback(payload);
+  });
+  
+  console.log('onMessage handler setup complete');
+};
+
+// Export the notification service
+export const notificationService = {
+  init,
+  getFCMToken,
+  setupOnMessage,
+  requestFCMToken,
+  registerServiceWorker
 }; 

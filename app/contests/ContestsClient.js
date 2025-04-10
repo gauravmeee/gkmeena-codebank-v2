@@ -37,94 +37,54 @@ export default function ContestsClient({ initialContests, platforms }) {
   const [reminderTime, setReminderTime] = useState('30');
   const [isAdmin, setIsAdmin] = useState(false);
   const [platformNotifications, setPlatformNotifications] = useState({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Remove duplicates and memoize filtered contests
-  const filteredContests = useMemo(() => {
-    // First, remove duplicates based on platform and contest name
-    const uniqueContests = initialContests.reduce((acc, contest) => {
-      const normalizedPlatform = contest.platform.trim();
-      const key = `${normalizedPlatform}-${contest.contestName.trim()}`;
-      
-      // If we already have this contest, only keep the one with the shorter URL
-      // This helps handle cases where the same contest has multiple URLs
-      if (!acc[key] || contest.contestLink.length < acc[key].contestLink.length) {
-        acc[key] = {
-          ...contest,
-          platform: normalizedPlatform // Store normalized platform name
-        };
-      }
-      return acc;
-    }, {});
-
-    const contests = Object.values(uniqueContests);
-
-    // Then apply platform filtering
-    return selectedPlatforms.length > 0
-      ? contests.filter(contest => {
-          const contestPlatform = contest.platform.toLowerCase();
-          return selectedPlatforms.some(platform => 
-            platform.toLowerCase().trim() === contestPlatform
-          );
-        })
-      : contests;
-  }, [selectedPlatforms, initialContests]);
-
-  // Memoize grouped contests
-  const groupedContests = useMemo(() => {
-    if (groupBy === 'none') return { '': filteredContests };
+  // Initialize notifications
+  useEffect(() => {
+    let isMounted = true;
     
-    return filteredContests.reduce((groups, contest) => {
-      let key;
-      if (groupBy === 'date') {
-        const date = new Date(contest.startTime);
-        key = date.toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        });
-      } else if (groupBy === 'platform') {
-        key = contest.platform;
-      }
+    const setupNotifications = async () => {
+      if (!currentUser || !isMounted || isInitialized) return;
       
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(contest);
-      return groups;
-    }, {});
-  }, [filteredContests, groupBy]);
+      try {
+        // Fetch user preferences
+        const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+        if (userPrefsDoc.exists()) {
+          const data = userPrefsDoc.data();
+          setNotifications(data.notifications || {});
+          setPlatformNotifications(data.platformNotifications || {});
+        }
 
-  // Memoize sorted entries
-  const sortedEntries = useMemo(() => {
-    return Object.entries(groupedContests).sort(([keyA, _a], [keyB, _b]) => {
-      if (groupBy === 'date' && keyA && keyB) {
-        const dateA = new Date(keyA.split(' ').map(part => 
-          isNaN(part) ? part : part.padStart(2, '0')
-        ).join(' '));
-        const dateB = new Date(keyB.split(' ').map(part => 
-          isNaN(part) ? part : part.padStart(2, '0')
-        ).join(' '));
-        return dateA - dateB;
-      }
-      return 0;
-    });
-  }, [groupedContests, groupBy]);
+        // Initialize notification service
+        console.log('Initializing notifications...');
+        const initialized = await notificationService.init();
+        
+        if (initialized) {
+          const token = await notificationService.getFCMToken(currentUser.uid);
+          
+          if (token) {
+            notificationService.setupOnMessage((payload) => {
+              console.log('Received foreground message:', payload);
+            });
+          }
+        }
 
-  const fetchUserPreferences = useCallback(async () => {
-    if (!currentUser) return;
-
-    try {
-      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-      if (userPrefsDoc.exists()) {
-        const data = userPrefsDoc.data();
-        setFavorites(data.favorites || []);
-        setNotifications(data.notifications || {});
-        setPlatformNotifications(data.platformNotifications || {});
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Error in notification setup:', error);
       }
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
-    }
-  }, [currentUser]);
+    };
+
+    setupNotifications();
+
+    return () => {
+      isMounted = false;
+      if (notificationService.messageHandlerUnsubscribe) {
+        notificationService.messageHandlerUnsubscribe();
+        notificationService.messageHandlerUnsubscribe = null;
+      }
+    };
+  }, [currentUser, isInitialized]);
 
   const checkAdminStatus = useCallback(async () => {
     if (!currentUser) return;
@@ -138,73 +98,77 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
   }, [currentUser]);
 
-  // Initialize notifications when user logs in
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserPreferences();
-      checkAdminStatus();
-      initializeNotifications();
-    }
-  }, [currentUser, fetchUserPreferences, checkAdminStatus]);
+  const handlePlatformNotificationsChange = useCallback((event) => {
+    const { notifications: newNotifications, platformNotifications: newPlatformNotifications } = event.detail;
+    setNotifications(newNotifications);
+    setPlatformNotifications(newPlatformNotifications);
+  }, []);
 
-  const initializeNotifications = useCallback(async () => {
-    try {
-      await notificationService.init();
-      const token = await notificationService.getFCMToken(currentUser.uid);
-      
-      if (token) {
-        notificationService.setupOnMessage((payload) => {
-          console.log('Received foreground message:', payload);
-        });
+  const handleNotificationRemoved = useCallback((event) => {
+    const { contestId } = event.detail;
+    console.log(`Notification removed event received for ${contestId}`);
+    
+    setFavorites(prevFavorites => {
+      const newFavorites = { ...prevFavorites };
+      if (newFavorites[contestId]) {
+        newFavorites[contestId] = {
+          ...newFavorites[contestId],
+          notification: false,
+          reminderTime: null
+        };
       }
-    } catch (error) {
-      console.error('Error initializing notifications:', error);
-    }
-  }, [currentUser]);
+      return newFavorites;
+    });
+  }, []);
 
-  // Listen for platform notification changes
+  // Define all hooks after functions
+  const filteredContests = useMemo(() => {
+    return initialContests.filter(contest => {
+      if (selectedPlatforms.length === 0) return true;
+      return selectedPlatforms.includes(contest.platform);
+    });
+  }, [initialContests, selectedPlatforms]);
+
+  const groupedContests = useMemo(() => {
+    if (groupBy === 'none') return { '': filteredContests };
+    
+    return filteredContests.reduce((groups, contest) => {
+      const key = groupBy === 'date' 
+        ? new Date(contest.startTime).toLocaleDateString()
+        : contest[groupBy];
+      
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(contest);
+      return groups;
+    }, {});
+  }, [filteredContests, groupBy]);
+
+  const sortedEntries = useMemo(() => {
+    return Object.entries(groupedContests).sort(([a], [b]) => {
+      if (groupBy === 'date') {
+        return new Date(a) - new Date(b);
+      }
+      return a.localeCompare(b);
+    });
+  }, [groupedContests, groupBy]);
+
+  // Single useEffect for event listeners
   useEffect(() => {
-    const handlePlatformNotificationsChange = (event) => {
-      const { notifications: newNotifications, platformNotifications: newPlatformNotifications } = event.detail;
-      setNotifications(newNotifications);
-      setPlatformNotifications(newPlatformNotifications);
-    };
-
     window.addEventListener('platformNotificationsChanged', handlePlatformNotificationsChange);
+    window.addEventListener('notificationRemoved', handleNotificationRemoved);
+    
     return () => {
       window.removeEventListener('platformNotificationsChanged', handlePlatformNotificationsChange);
+      window.removeEventListener('notificationRemoved', handleNotificationRemoved);
     };
-  }, []);
+  }, [handlePlatformNotificationsChange, handleNotificationRemoved]);
 
-  // Listen for notification removal events
+  // Initialize admin status
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const handleNotificationRemoved = (event) => {
-        const { contestId } = event.detail;
-        console.log(`Notification removed event received for ${contestId}`);
-        
-        // Update the local state to reflect the removal
-        setFavorites(prevFavorites => {
-          const newFavorites = { ...prevFavorites };
-          if (newFavorites[contestId]) {
-            // Remove the notification from the favorites
-            newFavorites[contestId] = {
-              ...newFavorites[contestId],
-              notification: false,
-              reminderTime: null
-            };
-          }
-          return newFavorites;
-        });
-      };
-      
-      window.addEventListener('notificationRemoved', handleNotificationRemoved);
-      
-      return () => {
-        window.removeEventListener('notificationRemoved', handleNotificationRemoved);
-      };
-    }
-  }, []);
+    checkAdminStatus();
+  }, [checkAdminStatus]);
 
   const toggleFavorite = useCallback(async (contest) => {
     if (!currentUser) {
@@ -297,82 +261,122 @@ export default function ContestsClient({ initialContests, platforms }) {
 
   const testNotification = useCallback(async (contest) => {
     if (!currentUser || !isAdmin) {
-      toast.error('Only admins can test notifications');
+      toast.error('You must be logged in as an admin to test notifications');
+      return;
+    }
+
+    // Prevent multiple simultaneous requests
+    const requestId = `${currentUser.uid}-${contest.platform}-${contest.contestName}-${Date.now()}`;
+    const isRequestInProgress = sessionStorage.getItem('notificationRequestInProgress');
+    
+    if (isRequestInProgress) {
+      console.log('Notification request already in progress, skipping');
       return;
     }
 
     try {
-      console.log('Testing notification for contest:', contest);
+      // Mark request as in progress
+      sessionStorage.setItem('notificationRequestInProgress', requestId);
 
-      // Initialize if not already initialized
-      console.log('Initializing notification service...');
-      await notificationService.init();
-      
-      // Get or refresh FCM token
-      console.log('Getting FCM token...');
-      const token = await notificationService.getFCMToken(currentUser.uid);
-      
-      if (!token) {
-        console.error('Failed to get FCM token');
-        toast.error('Failed to get notification permission');
+      // Get user's FCM token
+      const fcmToken = await notificationService.getFCMToken(currentUser.uid);
+      if (!fcmToken) {
+        toast.error('Failed to get FCM token. Please ensure notifications are enabled.');
         return;
       }
 
-      // Set a 2-second delay before sending the notification
-      setTimeout(async () => {
-        console.log('Sending test notification request...');
-        // Send test notification through your backend
-        const response = await fetch('/api/send-test-notification', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      // Show loading state
+      toast.loading('Sending test notification...');
+
+      // Calculate time until contest starts
+      const contestTime = new Date(contest.startTime);
+      const currentTime = new Date();
+      const timeUntilContest = Math.floor((contestTime - currentTime) / (1000 * 60));
+      
+      console.log(`Test notification: Contest starts in ${timeUntilContest} minutes, setting reminder for ${timeUntilContest} minutes before`);
+
+      // Check for existing notification in Firestore
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      if (userPrefsDoc.exists()) {
+        const userData = userPrefsDoc.data();
+        const notifications = userData.notifications || {};
+        const contestId = `${contest.platform}-${contest.contestName}`;
+        
+        // If notification already exists, skip
+        if (notifications[contestId]) {
+          console.log('Notification already exists, skipping');
+          toast.info('Notification already exists');
+          return;
+        }
+      }
+
+      // Send test notification through your backend
+      const response = await fetch('/api/send-test-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Request-ID': requestId // Add request ID to track duplicates
+        },
+        body: JSON.stringify({
+          token: fcmToken,
+          type: 'contest',
+          notification: {
+            title: 'Test Contest Notification',
+            body: `${contest.contestName} on ${contest.platform}`
           },
-          body: JSON.stringify({
-            token,
+          data: {
+            name: contest.contestName,
+            platform: contest.platform,
+            startTime: contest.startTime,
+            url: contest.contestLink,
             type: 'contest',
-            notification: {
-              title: 'Test Contest Notification',
-              body: `${contest.contestName} on ${contest.platform}`
-            },
-            data: {
-              name: contest.contestName,
-              platform: contest.platform,
-              startTime: contest.startTime,
-              url: contest.contestLink,
-              type: 'contest'
-            }
-          }),
-        });
-
-        const responseData = await response.json();
-        console.log('Server response:', responseData);
-
-        if (!response.ok) {
-          console.error('Test notification error:', responseData);
-          throw new Error(responseData.error || 'Failed to send test notification');
-        }
-
-        console.log('Test notification sent successfully:', responseData);
-        toast.success('Test notification sent successfully');
-
-        // Show a local notification using ServiceWorkerRegistration
-        if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.showNotification('Test Notification Sent', {
-              body: 'Check your device for the test notification',
-              icon: '/assets/contests/default.png',
-              tag: 'test-notification',
-              renotify: true
-            });
-          } catch (error) {
-            console.error('Error showing local notification:', error);
+            isTest: true,
+            icon: `/assets/contests/${contest.platform.toLowerCase()}.png`,
+            tag: 'contest-reminder',
+            requestId: requestId // Add request ID to track duplicates
           }
-        }
-      }, 2000); // 2-second delay
+        }),
+      });
+
+      const responseData = await response.json();
+      console.log('Server response:', responseData);
+
+      if (!response.ok) {
+        console.error('Test notification error:', responseData);
+        throw new Error(responseData.error || 'Failed to send test notification');
+      }
+
+      // Store the notification in Firestore after successful send
+      if (userPrefsDoc.exists()) {
+        const userData = userPrefsDoc.data();
+        const notifications = userData.notifications || {};
+        const contestId = `${contest.platform}-${contest.contestName}`;
+        
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+          ...userData,
+          notifications: {
+            ...notifications,
+            [contestId]: {
+              reminderTime: timeUntilContest,
+              contestTime: contest.startTime,
+              isTest: true,
+              requestId: requestId,
+              createdAt: new Date().toISOString()
+            }
+          },
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+      }
+
+      console.log('Test notification sent successfully:', responseData);
+      toast.success('Test notification sent successfully');
+
     } catch (error) {
-      console.error('Error in test notification:', error);
+      console.error('Error sending test notification:', error);
       toast.error(error.message || 'Failed to send test notification');
+    } finally {
+      // Clear the request in progress flag
+      sessionStorage.removeItem('notificationRequestInProgress');
     }
   }, [currentUser, isAdmin]);
 
@@ -826,14 +830,17 @@ export default function ContestsClient({ initialContests, platforms }) {
 
       {/* Notification Dialog */}
       <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="notification-dialog-description">
           <DialogHeader>
             <DialogTitle>Set Contest Reminder</DialogTitle>
+            <p id="notification-dialog-description" className="text-sm text-muted-foreground">
+              Choose when you want to be reminded about this contest
+            </p>
           </DialogHeader>
           <div className="py-4">
             <p className="mb-4">When would you like to be reminded?</p>
             <Select value={reminderTime} onValueChange={setReminderTime}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Select reminder time">
                 <SelectValue placeholder="Select reminder time" />
               </SelectTrigger>
               <SelectContent>

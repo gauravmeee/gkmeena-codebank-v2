@@ -13,6 +13,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata = {
   title: "CodeBank - Coding Resources",
   description: "by GKmeena",
+  icons: "/favicon.png"
 };
 
 export default function RootLayout({ children }) {
