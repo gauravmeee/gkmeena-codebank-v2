@@ -54,10 +54,11 @@ messaging.onBackgroundMessage((payload) => {
   
   // Customize notification here
   const notificationTitle = payload.notification.title || 'New Notification';
+  const baseUrl = self.location.origin;
   const notificationOptions = {
     body: payload.notification.body || 'You have a new notification',
-    icon: payload.data?.platform ? `/assets/contests/${payload.data.platform.toLowerCase()}.png` : '/assets/contests/default.png',
-    badge: '/assets/contests/default.png',
+    icon: payload.data?.platform ? `${baseUrl}/assets/contests/${payload.data.platform.toLowerCase()}.png` : `${baseUrl}/assets/contests/default.png`,
+    badge: `${baseUrl}/assets/contests/default.png`,
     data: payload.data,
     tag: 'contest-reminder',
     requireInteraction: true
@@ -161,10 +162,11 @@ self.addEventListener('push', (event) => {
             
             // Show notification based on the push data
             const notificationTitle = data.notification?.title || 'New Notification';
+            const baseUrl = self.location.origin;
             const notificationOptions = {
               body: data.notification?.body || 'You have a new notification',
-              icon: data.data?.platform ? `/assets/contests/${data.data.platform.toLowerCase()}.png` : '/assets/contests/default.png',
-              badge: '/assets/contests/default.png',
+              icon: data.data?.platform ? `${baseUrl}/assets/contests/${data.data.platform.toLowerCase()}.png` : `${baseUrl}/assets/contests/default.png`,
+              badge: `${baseUrl}/assets/contests/default.png`,
               data: data.data || {},
               tag: 'contest-reminder',
               requireInteraction: true

@@ -49,8 +49,8 @@ export async function POST(request) {
         notification: {
           title: notificationPayload.title,
           body: notificationPayload.body,
-          icon: '/assets/contests/default.png',
-          badge: '/assets/contests/default.png',
+          icon: `${request.nextUrl.origin}/assets/contests/default.png`,
+          badge: `${request.nextUrl.origin}/assets/contests/default.png`,
           vibrate: [100, 50, 100],
           requireInteraction: true,
           actions: [
