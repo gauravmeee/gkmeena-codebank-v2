@@ -178,9 +178,10 @@ export default function ContestsClient({ initialContests, platforms }) {
 
     try {
       const contestId = `${contest.platform}-${contest.contestName}`;
-      const newFavorites = favorites.includes(contestId)
-        ? favorites.filter(id => id !== contestId)
-        : [...favorites, contestId];
+      const currentFavorites = Array.isArray(favorites) ? favorites : [];
+      const newFavorites = currentFavorites.includes(contestId)
+        ? currentFavorites.filter(id => id !== contestId)
+        : [...currentFavorites, contestId];
       
       // Get current preferences to preserve all data
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
@@ -193,7 +194,7 @@ export default function ContestsClient({ initialContests, platforms }) {
 
       setFavorites(newFavorites);
       toast.success(
-        favorites.includes(contestId)
+        currentFavorites.includes(contestId)
           ? 'Removed from favorites'
           : 'Added to favorites'
       );
@@ -743,6 +744,7 @@ export default function ContestsClient({ initialContests, platforms }) {
     });
 
     const platformImage = `/assets/contests/${contest.platform}.png` || "/assets/contests/default.png";
+    const isFavorite = Array.isArray(favorites) && favorites.includes(contestId);
     
     // Calculate time until notification if one is set
     let notificationInfo = null;
@@ -785,9 +787,9 @@ export default function ContestsClient({ initialContests, platforms }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => toggleFavorite(contest)}
-                className={favorites.includes(contestId) ? "text-red-500" : ""}
+                className={isFavorite ? "text-red-500" : ""}
               >
-                <Heart className="h-5 w-5" fill={favorites.includes(contestId) ? "currentColor" : "none"} />
+                <Heart className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
               </Button>
               <Button
                 variant="ghost"
