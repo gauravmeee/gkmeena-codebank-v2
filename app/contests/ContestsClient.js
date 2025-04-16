@@ -463,6 +463,25 @@ export default function ContestsClient({ initialContests, platforms }) {
               console.error('Test notification error:', await response.json());
             } else {
               console.log('Test notification sent successfully');
+              // Immediately remove the notification after successful send
+              setNotifications(prevNotifications => {
+                const newNotifications = { ...prevNotifications };
+                delete newNotifications[contestId];
+                return newNotifications;
+              });
+
+              // Update Firestore
+              const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+              if (userPrefsDoc.exists()) {
+                const userData = userPrefsDoc.data();
+                const updatedNotifications = { ...userData.notifications };
+                delete updatedNotifications[contestId];
+                
+                await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+                  notifications: updatedNotifications,
+                  lastUpdated: new Date().toISOString()
+                }, { merge: true });
+              }
             }
           }
         } catch (error) {
