@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import Script from "next/script";
 import { Toaster } from 'sonner';
-import NotificationHandler from '@/components/NotificationHandler';
+import ContestsNotificationHandler from '@/components/ContestsNotificationHandler';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
             disableTransitionOnChange
           >
         <AuthProvider>
-          <NotificationHandler />
+          <ContestsNotificationHandler />
           <Navbar/>
           <main className="flex-grow">{children}</main>
           <Footer/>

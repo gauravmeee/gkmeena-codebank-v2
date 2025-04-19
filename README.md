@@ -116,3 +116,19 @@ The app fetches contests data from an my Flask API hosted on Render.
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+```
+JobNotificationHandler ------------->Service Worker +----+
+       |                                                 |
+       +-----------------------+                         |
+       |                       |                         |
+       v                       v                         |
+useNotifications Hook   NotificationService              |
+                               |                         |
+                               v                         |
+                        Firebase Cloud Messaging         |
+                               |                         |
+                               |                         v
+                               +------->  Browser Notifications
+
+                              
+```

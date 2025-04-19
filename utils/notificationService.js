@@ -244,21 +244,29 @@ const setupOnMessage = (callback) => {
   messageHandlerUnsubscribe = onMessage(messaging, (payload) => {
     console.log('[notificationService] Received foreground message:', payload);
     
-    // Skip if this is a test notification (it will be handled by the service worker)
-    if (payload.data && payload.data.isTest) {
-      console.log('[notificationService] Skipping test notification in foreground');
-      return;
-    }
-    
     // Only show notification if the app is in foreground and visible
     if (document.visibilityState === 'visible') {
+      // Generate a unique notification ID
+      const notificationId = payload.data?.id || `foreground-${Date.now()}`;
+      
+      // Check last notification time
+      const lastNotificationTime = window.lastNotificationTime || 0;
+      const now = Date.now();
+      if (now - lastNotificationTime < 2000) {
+        console.log('[notificationService] Skipping notification - too soon after last one');
+        return;
+      }
+      
       // Customize notification here
       const notificationTitle = payload.notification.title || 'New Notification';
       const notificationOptions = {
         body: payload.notification.body || 'You have a new notification',
         icon: payload.data?.platform ? `/assets/contests/${payload.data.platform.toLowerCase()}.png` : '/assets/contests/default.png',
         badge: '/assets/contests/default.png',
-        data: payload.data,
+        data: {
+          ...payload.data,
+          id: notificationId
+        },
         tag: 'contest-reminder',
         requireInteraction: true
       };
@@ -268,10 +276,11 @@ const setupOnMessage = (callback) => {
         registration.getNotifications({ tag: 'contest-reminder' })
           .then(notifications => {
             if (notifications.length > 0) {
-              console.log('[notificationService] Notification with same tag already exists, skipping');
-              return;
+              console.log('[notificationService] Closing existing notifications');
+              notifications.forEach(notification => notification.close());
             }
             
+            window.lastNotificationTime = now;
             // Show the notification
             return registration.showNotification(notificationTitle, notificationOptions);
           })
@@ -280,11 +289,7 @@ const setupOnMessage = (callback) => {
           });
       });
     }
-    
-    if (onMessageCallback) onMessageCallback(payload);
   });
-  
-  console.log('onMessage handler setup complete');
 };
 
 // Export the notification service

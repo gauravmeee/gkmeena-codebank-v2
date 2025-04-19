@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import ContestFilters from './ContestFilters';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Heart, Bell } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,6 +25,20 @@ import {
 import Link from 'next/link';
 import PlatformNotificationSettings from './PlatformNotificationSettings';
 import { notificationService } from '@/lib/notificationService';
+import { ErrorBoundary } from 'react-error-boundary';
+
+// Error Fallback Component
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
+      <div className="text-center">
+        <h2 className="text-2xl font-semibold mb-4">Something went wrong</h2>
+        <pre className="text-red-500 mb-4">{error.message}</pre>
+        <Button onClick={resetErrorBoundary}>Try again</Button>
+      </div>
+    </div>
+  );
+}
 
 export default function ContestsClient({ initialContests, platforms }) {
   const { currentUser } = useAuth();
@@ -38,6 +52,77 @@ export default function ContestsClient({ initialContests, platforms }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [platformNotifications, setPlatformNotifications] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Error handling wrapper
+  const handleAsyncError = useCallback(async (operation) => {
+    try {
+      await operation();
+    } catch (err) {
+      console.error('Operation failed:', err);
+      setError(err);
+      toast.error(err.message || 'An error occurred');
+    }
+  }, []);
+
+  // Add cleanup function for notifications with error handling
+  const cleanupNotification = useCallback(async (contestId) => {
+    if (!currentUser || !contestId) return;
+
+    await handleAsyncError(async () => {
+      console.log(`Cleaning up notification for ${contestId}`);
+      
+      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+      if (!userPrefsDoc.exists()) return;
+
+      const userData = userPrefsDoc.data();
+      const currentNotifications = userData.notifications || {};
+      
+      if (!currentNotifications[contestId]) {
+        console.log('No notification found to clean up');
+        return;
+      }
+
+      const newNotifications = { ...currentNotifications };
+      delete newNotifications[contestId];
+      
+      const platform = contestId.split('-')[0];
+      const platformContests = Object.keys(newNotifications).filter(id => id.startsWith(`${platform}-`));
+      const newPlatformNotifications = { ...userData.platformNotifications || {} };
+      
+      if (platformContests.length === 0) {
+        delete newPlatformNotifications[platform];
+      }
+
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        notifications: newNotifications,
+        platformNotifications: newPlatformNotifications,
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
+
+      setNotifications(newNotifications);
+      setPlatformNotifications(newPlatformNotifications);
+    });
+  }, [currentUser, handleAsyncError]);
+
+  // Add event listener for notification sent
+  useEffect(() => {
+    const handleNotificationSent = (event) => {
+      const { contestId } = event.detail;
+      if (contestId) {
+        // Add a small delay before cleanup to ensure notification is processed
+        setTimeout(() => {
+          cleanupNotification(contestId);
+        }, 2000); // 2 second delay
+      }
+    };
+
+    window.addEventListener('contestNotificationSent', handleNotificationSent);
+
+    return () => {
+      window.removeEventListener('contestNotificationSent', handleNotificationSent);
+    };
+  }, [cleanupNotification]);
 
   // Initialize notifications
   useEffect(() => {
@@ -65,6 +150,11 @@ export default function ContestsClient({ initialContests, platforms }) {
           if (token) {
             notificationService.setupOnMessage((payload) => {
               console.log('Received foreground message:', payload);
+              // Don't trigger cleanup for test notifications
+              if (payload.data?.isTest === 'true') {
+                console.log('Skipping cleanup for test notification');
+                return;
+              }
             });
           }
         }
@@ -79,12 +169,24 @@ export default function ContestsClient({ initialContests, platforms }) {
 
     return () => {
       isMounted = false;
-      if (notificationService.messageHandlerUnsubscribe) {
-        notificationService.messageHandlerUnsubscribe();
-        notificationService.messageHandlerUnsubscribe = null;
-      }
     };
   }, [currentUser, isInitialized]);
+
+  // Add real-time notification updates listener
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const userPrefsRef = doc(db, 'userPreferences', currentUser.uid);
+    const unsubscribe = onSnapshot(userPrefsRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setNotifications(data.notifications || {});
+        setPlatformNotifications(data.platformNotifications || {});
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const checkAdminStatus = useCallback(async () => {
     if (!currentUser) return;
@@ -177,7 +279,7 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
 
     try {
-      const contestId = `${contest.platform}-${contest.contestName}`;
+      const contestId = `${contest.platform}-${contest.contestName}-${contest.startTime}`;
       const currentFavorites = Array.isArray(favorites) ? favorites : [];
       const newFavorites = currentFavorites.includes(contestId)
         ? currentFavorites.filter(id => id !== contestId)
@@ -210,7 +312,7 @@ export default function ContestsClient({ initialContests, platforms }) {
       return;
     }
 
-    const contestId = `${contest.platform}-${contest.contestName}`;
+    const contestId = `${contest.platform}-${contest.contestName}-${contest.startTime}`;
 
     try {
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
@@ -287,43 +389,48 @@ export default function ContestsClient({ initialContests, platforms }) {
       }
 
       // Show loading state
-      toast.loading('Sending test notification...');
+      const loadingToast = toast.loading('Sending test notification...');
 
-      // Calculate time until contest starts
-      const contestTime = new Date(contest.startTime);
-      const currentTime = new Date();
-      const timeUntilContest = Math.floor((contestTime - currentTime) / (1000 * 60));
+      // For test notifications, set reminder time to immediate (0 minutes)
+      const reminderTime = 0;
       
-      console.log(`Test notification: Contest starts in ${timeUntilContest} minutes, setting reminder for ${timeUntilContest} minutes before`);
+      console.log('Sending immediate test notification');
 
       // Check for existing notification in Firestore
       const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-      if (userPrefsDoc.exists()) {
-        const userData = userPrefsDoc.data();
-        const notifications = userData.notifications || {};
-        const contestId = `${contest.platform}-${contest.contestName}`;
-        
-        // If notification already exists, skip
-        if (notifications[contestId]) {
-          console.log('Notification already exists, skipping');
-          toast.info('Notification already exists');
-          return;
-        }
-      }
+      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
+      const notifications = userData.notifications || {};
+      const contestId = `${contest.platform}-${contest.contestName}-${contest.startTime}`;
+      
+      // Store the notification in Firestore
+      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
+        ...userData,
+        notifications: {
+          ...notifications,
+          [contestId]: {
+            reminderTime: reminderTime,
+            contestTime: contest.startTime,
+            isTest: true,
+            requestId: requestId,
+            createdAt: new Date().toISOString()
+          }
+        },
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
 
-      // Send test notification through your backend
+      // Send test notification immediately through your backend
       const response = await fetch('/api/send-test-notification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Request-ID': requestId // Add request ID to track duplicates
+          'X-Request-ID': requestId
         },
         body: JSON.stringify({
           token: fcmToken,
           type: 'contest',
           notification: {
-            title: 'Test Contest Notification',
-            body: `${contest.contestName} on ${contest.platform}`
+            title: `Test Notification - ${contest.platform}`,
+            body: `${contest.contestName} - Immediate Test Notification`
           },
           data: {
             name: contest.contestName,
@@ -332,45 +439,28 @@ export default function ContestsClient({ initialContests, platforms }) {
             url: contest.contestLink,
             type: 'contest',
             isTest: true,
+            contestId: contestId,
             icon: `/assets/contests/${contest.platform.toLowerCase()}.png`,
-            tag: 'contest-reminder',
-            requestId: requestId // Add request ID to track duplicates
+            tag: `contest-reminder-${Date.now()}`, // Unique tag for each test
+            requestId: requestId
           }
         }),
       });
 
       const responseData = await response.json();
-      console.log('Server response:', responseData);
-
+      
       if (!response.ok) {
-        console.error('Test notification error:', responseData);
         throw new Error(responseData.error || 'Failed to send test notification');
       }
 
-      // Store the notification in Firestore after successful send
-      if (userPrefsDoc.exists()) {
-        const userData = userPrefsDoc.data();
-        const notifications = userData.notifications || {};
-        const contestId = `${contest.platform}-${contest.contestName}`;
-        
-        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-          ...userData,
-          notifications: {
-            ...notifications,
-            [contestId]: {
-              reminderTime: timeUntilContest,
-              contestTime: contest.startTime,
-              isTest: true,
-              requestId: requestId,
-              createdAt: new Date().toISOString()
-            }
-          },
-          lastUpdated: new Date().toISOString()
-        }, { merge: true });
-      }
-
-      console.log('Test notification sent successfully:', responseData);
+      // Clear loading state and show success
+      toast.dismiss(loadingToast);
       toast.success('Test notification sent successfully');
+
+      // Trigger immediate UI update
+      window.dispatchEvent(new CustomEvent('contestNotificationSent', {
+        detail: { contestId }
+      }));
 
     } catch (error) {
       console.error('Error sending test notification:', error);
@@ -388,174 +478,40 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
 
     try {
-      // If test option is selected, trigger test notification with dynamic timing
-      if (reminderTime === 'test') {
-        // Calculate time until contest starts
-        const contestTime = new Date(selectedContest.startTime);
-        const currentTime = new Date();
-        const timeUntilContest = contestTime.getTime() - currentTime.getTime();
-        const minutesUntilContest = Math.floor(timeUntilContest / (60 * 1000));
-        
-        // Use the remaining time as the reminder time
-        const dynamicReminderTime = Math.max(1, minutesUntilContest);
-        
-        console.log(`Test notification: Contest starts in ${minutesUntilContest} minutes, setting reminder for ${dynamicReminderTime} minutes before`);
-        
-        // Store the test notification with the dynamic reminder time
-        const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-        const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
-        
-        const contestId = `${selectedContest.platform}-${selectedContest.contestName}`;
-        const newNotifications = {
-          ...userData.notifications || {},
-          [contestId]: {
-            reminderTime: dynamicReminderTime,
-            contestTime: selectedContest.startTime,
-            isTest: true, // Mark as test notification
-            createdAt: new Date().toISOString() // Add creation timestamp
-          }
-        };
+      const contestTime = new Date(selectedContest.startTime);
+      const createdAt = new Date();
+      const isTest = reminderTime === 'test';
 
-        // Use setDoc with merge option to update only the notifications field
-        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-          notifications: newNotifications,
-          lastUpdated: new Date().toISOString()
-        }, { merge: true });
+      // For test: calculate reminderTime in minutes such that notification fires 2 sec after creation
+      const reminderTimeValue = isTest
+        ? (contestTime.getTime() - (createdAt.getTime() + 2000)) / (60 * 1000)
+        : parseInt(reminderTime);
 
-        setNotifications(newNotifications);
-        setShowNotificationDialog(false);
-        
-        // Show immediate notification for test
-        toast.success(`Test notification set for ${dynamicReminderTime} minutes before contest start (${minutesUntilContest} minutes remaining)`);
-        
-        // Send a direct test notification
-        try {
-          // Initialize if not already initialized
-          await notificationService.init();
-          
-          // Get or refresh FCM token
-          const token = await notificationService.getFCMToken(currentUser.uid);
-          
-          if (token) {
-            // Send test notification through your backend
-            const response = await fetch('/api/send-test-notification', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                token,
-                type: 'contest',
-                notification: {
-                  title: 'Test Contest Notification',
-                  body: `${selectedContest.contestName} on ${selectedContest.platform}`
-                },
-                data: {
-                  name: selectedContest.contestName,
-                  platform: selectedContest.platform,
-                  startTime: selectedContest.startTime,
-                  url: selectedContest.contestLink,
-                  type: 'contest'
-                }
-              }),
-            });
+      // Calculate the time when the notification should be shown
+      const notificationTime = new Date(contestTime.getTime() - (reminderTimeValue * 60 * 1000));
 
-            if (!response.ok) {
-              console.error('Test notification error:', await response.json());
-            } else {
-              console.log('Test notification sent successfully');
-              // Immediately remove the notification after successful send
-              setNotifications(prevNotifications => {
-                const newNotifications = { ...prevNotifications };
-                delete newNotifications[contestId];
-                return newNotifications;
-              });
+      const contestId = `${selectedContest.platform}-${selectedContest.contestName}-${selectedContest.startTime}`;
 
-              // Update Firestore
-              const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-              if (userPrefsDoc.exists()) {
-                const userData = userPrefsDoc.data();
-                const updatedNotifications = { ...userData.notifications };
-                delete updatedNotifications[contestId];
-                
-                await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-                  notifications: updatedNotifications,
-                  lastUpdated: new Date().toISOString()
-                }, { merge: true });
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error sending test notification:', error);
-        }
-        
-        // Trigger the notification handler to process this immediately
-        window.dispatchEvent(new CustomEvent('contestNotificationsChanged', {
-          detail: { 
-            notifications: newNotifications,
-            platformNotifications: userData.platformNotifications || {}
-          }
-        }));
-        
-        return;
-      }
-
-      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
-      
-      const contestId = `${selectedContest.platform}-${selectedContest.contestName}`;
-      const newNotifications = {
-        ...userData.notifications || {},
-        [contestId]: {
-          reminderTime: parseInt(reminderTime),
+      // Use updateDoc to set the notification
+      await updateDoc(doc(db, 'userPreferences', currentUser.uid), {
+        [`notifications.${contestId}`]: {
+          reminderTime: reminderTimeValue,
           contestTime: selectedContest.startTime,
-          createdAt: new Date().toISOString() // Add creation timestamp
-        }
-      };
+          notificationTime: notificationTime.toISOString(),
+          isTest,
+          createdAt: createdAt.toISOString()
+        },
+        lastUpdated: new Date().toISOString()
+      });
 
-      const platformContests = filteredContests.filter(c => c.platform === selectedContest.platform);
-      const platformContestIds = platformContests.map(c => `${c.platform}-${c.contestName}`);
-      const allPlatformContestsHaveNotifications = platformContestIds.every(id => newNotifications[id]);
-
-      const newPlatformNotifications = { ...userData.platformNotifications || {} };
-      if (allPlatformContestsHaveNotifications) {
-        newPlatformNotifications[selectedContest.platform] = {
-          enabled: true,
-          reminderTime: parseInt(reminderTime),
-          updatedAt: new Date().toISOString() // Add update timestamp
-        };
-      } else {
-        delete newPlatformNotifications[selectedContest.platform];
-      }
-
-      const updatedUserPrefs = {
-        ...userData,
-        notifications: newNotifications,
-        platformNotifications: newPlatformNotifications,
-        lastUpdated: new Date().toISOString() // Add last updated timestamp
-      };
-
-      // Use setDoc with merge option to update only changed fields
-      await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedUserPrefs, { merge: true });
-
-      setNotifications(newNotifications);
-      setPlatformNotifications(newPlatformNotifications);
       setShowNotificationDialog(false);
+      toast.success(`Reminder set for ${isTest ? '2 seconds' : reminderTimeValue + ' minutes'} before contest start`);
 
-      // Emit event for platform settings
-      window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
-        detail: { 
-          notifications: newNotifications,
-          platformNotifications: newPlatformNotifications
-        }
-      }));
-
-      toast.success('Reminder set successfully');
     } catch (error) {
       console.error('Error setting reminder:', error);
       toast.error('Failed to set reminder');
     }
-  }, [currentUser, selectedContest, reminderTime, filteredContests]);
+  }, [currentUser, selectedContest, reminderTime]);
 
   const handlePlatformNotification = useCallback(async (platform, isTest = false) => {
     if (!currentUser) {
@@ -590,7 +546,7 @@ export default function ContestsClient({ initialContests, platforms }) {
         
         console.log(`Test notification for platform ${platform}: Contest starts in ${minutesUntilContest} minutes, setting reminder for ${dynamicReminderTime} minutes before`);
         
-        const contestId = `${testContest.platform}-${testContest.contestName}`;
+        const contestId = `${testContest.platform}-${testContest.contestName}-${testContest.startTime}`;
         const newNotifications = {
           ...userData.notifications || {},
           [contestId]: {
@@ -692,7 +648,7 @@ export default function ContestsClient({ initialContests, platforms }) {
         const newNotifications = { ...notifications };
 
         platformContests.forEach(contest => {
-          const contestId = `${contest.platform}-${contest.contestName}`;
+          const contestId = `${contest.platform}-${contest.contestName}-${contest.startTime}`;
           if (!notifications[contestId]) {
             newNotifications[contestId] = {
               reminderTime: newPlatformNotifications[platform].reminderTime,
@@ -731,7 +687,7 @@ export default function ContestsClient({ initialContests, platforms }) {
 
   // Memoize the contest card to prevent unnecessary re-renders
   const ContestCard = useCallback(({ contest }) => {
-    const contestId = `${contest.platform}-${contest.contestName}`;
+    const contestId = `${contest.platform}-${contest.contestName}-${contest.startTime}`;
     const formattedDate = new Date(contest.startTime).toLocaleString('en-GB', {
       timeZone: 'Asia/Kolkata',
       day: 'numeric',
@@ -821,75 +777,91 @@ export default function ContestsClient({ initialContests, platforms }) {
   }, [favorites, notifications, handleNotificationClick, toggleFavorite]);
 
   return (
-    <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
-      {/* Responsive header with flex layout instead of absolute positioning */}
-      <div className="flex flex-col sm:flex-row items-center justify-center relative mb-6 sm:mb-8">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
-          Coding Contests
-        </h2>
-        
-        <div className="sm:absolute sm:right-0 mt-2 sm:mt-0 flex items-center gap-4">
-          <Link href="/contests/favorites">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Heart className="h-4 w-4" />
-              Favorites
-            </Button>
-          </Link>
-          <PlatformNotificationSettings 
-            platforms={platforms} 
-            initialContests={initialContests}
-          />
-          <ContestFilters
-            platforms={platforms}
-            selectedPlatforms={selectedPlatforms}
-            setSelectedPlatforms={setSelectedPlatforms}
-            currentGroupBy={groupBy}
-            setGroupBy={setGroupBy}
-          />
-        </div>
-      </div>
-
-      {/* Notification Dialog */}
-      <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
-        <DialogContent aria-describedby="notification-dialog-description">
-          <DialogHeader>
-            <DialogTitle>Set Contest Reminder</DialogTitle>
-            <p id="notification-dialog-description" className="text-sm text-muted-foreground">
-              Choose when you want to be reminded about this contest
-            </p>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="mb-4">When would you like to be reminded?</p>
-            <Select value={reminderTime} onValueChange={setReminderTime}>
-              <SelectTrigger aria-label="Select reminder time">
-                <SelectValue placeholder="Select reminder time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10 minutes before</SelectItem>
-                <SelectItem value="30">30 minutes before</SelectItem>
-                <SelectItem value="60">1 hour before</SelectItem>
-                <SelectItem value="180">3 hours before</SelectItem>
-                <SelectItem value="1440">1 day before</SelectItem>
-                <SelectItem value="test">Test (2 sec)</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={setNotificationReminder}>Set Reminder</Button>
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onReset={() => {
+        setError(null);
+        setIsInitialized(false);
+        window.location.reload();
+      }}
+    >
+      {error ? (
+        <ErrorFallback error={error} resetErrorBoundary={() => setError(null)} />
+      ) : (
+        <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
+          {/* Responsive header with flex layout instead of absolute positioning */}
+          <div className="flex flex-col sm:flex-row items-center justify-center relative mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
+              Coding Contests
+            </h2>
+            
+            <div className="sm:absolute sm:right-0 mt-2 sm:mt-0 flex items-center gap-4">
+              <Link href="/contests/favorites">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Heart className="h-4 w-4" />
+                  Favorites
+                </Button>
+              </Link>
+              <PlatformNotificationSettings 
+                platforms={platforms} 
+                initialContests={initialContests}
+              />
+              <ContestFilters
+                platforms={platforms}
+                selectedPlatforms={selectedPlatforms}
+                setSelectedPlatforms={setSelectedPlatforms}
+                currentGroupBy={groupBy}
+                setGroupBy={setGroupBy}
+              />
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {sortedEntries.map(([group, groupContests]) => (
-        <div key={group} className="mb-8">
-          {group && <h3 className="text-xl font-semibold mb-2">{group}</h3>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {groupContests.map((contest) => (
-              <ContestCard key={`${contest.platform}-${contest.contestName}`} contest={contest} />
-            ))}
-          </div>
+          {/* Notification Dialog */}
+          <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
+            <DialogContent aria-describedby="notification-dialog-description">
+              <DialogHeader>
+                <DialogTitle>Set Contest Reminder</DialogTitle>
+                <p id="notification-dialog-description" className="text-sm text-muted-foreground">
+                  Choose when you want to be reminded about this contest
+                </p>
+              </DialogHeader>
+              <div className="py-4">
+                <p className="mb-4">When would you like to be reminded?</p>
+                <Select value={reminderTime} onValueChange={setReminderTime}>
+                  <SelectTrigger aria-label="Select reminder time">
+                    <SelectValue placeholder="Select reminder time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 minutes before</SelectItem>
+                    <SelectItem value="30">30 minutes before</SelectItem>
+                    <SelectItem value="60">1 hour before</SelectItem>
+                    <SelectItem value="180">3 hours before</SelectItem>
+                    <SelectItem value="1440">1 day before</SelectItem>
+                    <SelectItem value="test">Test (2 sec)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="mt-4 flex justify-end">
+                  <Button onClick={setNotificationReminder}>Set Reminder</Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {sortedEntries.map(([group, groupContests]) => (
+            <div key={group} className="mb-8">
+              {group && <h3 className="text-xl font-semibold mb-2">{group}</h3>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {groupContests.map((contest) => (
+                  <ContestCard 
+                    key={`${contest.platform}-${contest.contestName}-${contest.startTime}`} 
+                    contest={contest} 
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </ErrorBoundary>
   );
 }
