@@ -24,6 +24,20 @@ const formatTimeUntilNotification = (timeInMilliseconds) => {
   }
 };
 
+// Add utility function for calculating reminder time
+const calculateReminderTime = (data) => {
+  const contestTime = new Date(data.contestTime);
+  const createdAt = new Date(data.createdAt);
+  
+  // If it's a test notification, calculate time such that notification fires 5 sec after creation
+  if (data.reminderTime === 'test' || data.isTest) {
+    return (contestTime.getTime() - (createdAt.getTime() + 5000)) / (60 * 1000);
+  }
+  
+  // Otherwise use the specified reminder time
+  return parseInt(data.reminderTime);
+};
+
 export default function ContestsNotificationHandler() {
   const { currentUser } = useAuth();
 
@@ -62,7 +76,7 @@ export default function ContestsNotificationHandler() {
     };
 
     // Show notification function
-    const showNotification = async (title, body) => {
+    const showNotification = async (title, body, data = {}) => {
       // Always show toast notification
       toast.info(body);
 
@@ -73,12 +87,20 @@ export default function ContestsNotificationHandler() {
         try {
           if ('serviceWorker' in navigator) {
             const registration = await navigator.serviceWorker.ready;
+            const platform = data.platform?.toLowerCase() || 'default';
+            
             await registration.showNotification(title, {
               body,
-              icon: '/assets/contests/default.png',
+              icon: `/assets/contests/${platform}.png`,
+              badge: '/assets/contests/badge.png',
               tag: 'contest-reminder',
               renotify: true,
-              data: { type: 'contest', url: '/contests' }
+              data: { 
+                type: 'contest', 
+                url: '/contests',
+                platform: platform,
+                ...data 
+              }
             });
           }
         } catch (error) {
@@ -87,7 +109,7 @@ export default function ContestsNotificationHandler() {
       } else if (Notification.permission !== 'denied') {
         const granted = await requestNotificationPermission();
         if (granted) {
-          showNotification(title, body);
+          showNotification(title, body, data);
         }
       }
     };
@@ -96,12 +118,19 @@ export default function ContestsNotificationHandler() {
     const scheduleNotification = (contestId, data, notificationTime) => {
       const currentTime = new Date();
       const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
+      const [platform, contestName] = contestId.split('-');
       
       if (timeUntilNotification <= 0) {
         // Show notification immediately if we're past the notification time
         showNotification(
           'Contest Reminder',
-          `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(data.reminderTime)} minutes!`
+          `${contestName} on ${platform} starts in ${Math.round(data.reminderTime)} minutes!`,
+          {
+            platform: platform,
+            contestName: contestName,
+            contestId: contestId,
+            startTime: data.contestTime
+          }
         );
         removeNotificationImmediately(contestId);
       } else {
@@ -110,7 +139,13 @@ export default function ContestsNotificationHandler() {
         const timeoutId = setTimeout(async () => {
           showNotification(
             'Contest Reminder',
-            `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(data.reminderTime)} minutes!`
+            `${contestName} on ${platform} starts in ${Math.round(data.reminderTime)} minutes!`,
+            {
+              platform: platform,
+              contestName: contestName,
+              contestId: contestId,
+              startTime: data.contestTime
+            }
           );
           await removeNotificationImmediately(contestId);
         }, timeUntilNotification);
@@ -119,6 +154,7 @@ export default function ContestsNotificationHandler() {
       }
     };
 
+    // Update the checkNotifications function to use the new calculation
     const checkNotifications = async () => {
       try {
         if (!currentUser) return;
@@ -140,30 +176,14 @@ export default function ContestsNotificationHandler() {
           // Skip if it's a platform notification that isn't a test
           if (data.isPlatformNotification && !data.isTest) return;
 
-          // Calculate the contest time and creation time
+          // Calculate the contest time
           const contestTime = new Date(data.contestTime);
-          const createdAt = new Date(data.createdAt);
-
-          // For test: calculate reminderTime in minutes such that notification fires 2 sec after creation
-          const reminderTime = data.isTest
-            ? (contestTime.getTime() - (createdAt.getTime() + 2000)) / (60 * 1000)
-            : data.reminderTime;
+          
+          // Calculate the actual reminder time in minutes
+          const reminderTime = calculateReminderTime(data);
           
           // Calculate the time when the notification should be shown
           const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
-          
-          // For test notifications, show immediately if within 2 seconds of creation
-          if (data.isTest && currentTime.getTime() - createdAt.getTime() <= 2000) {
-            console.log(`Test notification detected for ${contestId}, showing immediately`);
-            
-            await showNotification(
-              'Test Contest Reminder',
-              `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(reminderTime)} minutes! (TEST)`
-            );
-            
-            await removeNotificationImmediately(contestId);
-            return;
-          }
           
           // Schedule or show the notification
           scheduleNotification(contestId, { ...data, reminderTime }, notificationTime);

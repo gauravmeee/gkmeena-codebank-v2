@@ -471,219 +471,71 @@ export default function ContestsClient({ initialContests, platforms }) {
     }
   }, [currentUser, isAdmin]);
 
-  const setNotificationReminder = useCallback(async () => {
-    if (!currentUser) {
-      toast.error('Please sign in to set reminders');
-      return;
-    }
+  const handleSetNotification = useCallback(async () => {
+    if (!currentUser || !selectedContest) return;
 
-    try {
+    await handleAsyncError(async () => {
       const contestTime = new Date(selectedContest.startTime);
       const createdAt = new Date();
       const isTest = reminderTime === 'test';
-
-      // For test: calculate reminderTime in minutes such that notification fires 2 sec after creation
-      const reminderTimeValue = isTest
-        ? (contestTime.getTime() - (createdAt.getTime() + 2000)) / (60 * 1000)
-        : parseInt(reminderTime);
-
-      // Calculate the time when the notification should be shown
-      const notificationTime = new Date(contestTime.getTime() - (reminderTimeValue * 60 * 1000));
-
+      
+      // Generate contestId using the consistent format
       const contestId = `${selectedContest.platform}-${selectedContest.contestName}-${selectedContest.startTime}`;
 
-      // Use updateDoc to set the notification
-      await updateDoc(doc(db, 'userPreferences', currentUser.uid), {
-        [`notifications.${contestId}`]: {
-          reminderTime: reminderTimeValue,
-          contestTime: selectedContest.startTime,
-          notificationTime: notificationTime.toISOString(),
-          isTest,
-          createdAt: createdAt.toISOString()
-        },
-        lastUpdated: new Date().toISOString()
-      });
-
-      setShowNotificationDialog(false);
-      toast.success(`Reminder set for ${isTest ? '2 seconds' : reminderTimeValue + ' minutes'} before contest start`);
-
-    } catch (error) {
-      console.error('Error setting reminder:', error);
-      toast.error('Failed to set reminder');
-    }
-  }, [currentUser, selectedContest, reminderTime]);
-
-  const handlePlatformNotification = useCallback(async (platform, isTest = false) => {
-    if (!currentUser) {
-      toast.error('Please sign in to set reminders');
-      return;
-    }
-
-    try {
-      const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-      const userData = userPrefsDoc.exists() ? userPrefsDoc.data() : {};
-      const platformNotifications = userData.platformNotifications || {};
-      const currentPlatformSettings = platformNotifications[platform] || { enabled: false };
-
-      // If this is a test notification, we'll handle it differently
-      if (isTest) {
-        // Get all contests for this platform
-        const platformContests = filteredContests.filter(c => c.platform === platform);
-        if (platformContests.length === 0) {
-          toast.error('No contests found for this platform to test');
-          return;
-        }
-
-        // Use the first upcoming contest for testing
-        const testContest = platformContests[0];
-        const contestTime = new Date(testContest.startTime);
-        const currentTime = new Date();
-        const timeUntilContest = contestTime.getTime() - currentTime.getTime();
-        const minutesUntilContest = Math.floor(timeUntilContest / (60 * 1000));
-        
-        // Use the remaining time as the reminder time
-        const dynamicReminderTime = Math.max(1, minutesUntilContest);
-        
-        console.log(`Test notification for platform ${platform}: Contest starts in ${minutesUntilContest} minutes, setting reminder for ${dynamicReminderTime} minutes before`);
-        
-        const contestId = `${testContest.platform}-${testContest.contestName}-${testContest.startTime}`;
-        const newNotifications = {
-          ...userData.notifications || {},
-          [contestId]: {
-            reminderTime: dynamicReminderTime,
-            contestTime: testContest.startTime,
-            isTest: true,
-            isPlatformNotification: true,
-            platform: testContest.platform,
-            createdAt: new Date().toISOString()
-          }
-        };
-
-        // Update Firestore
-        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-          notifications: newNotifications,
-          lastUpdated: new Date().toISOString()
-        }, { merge: true });
-
-        setNotifications(newNotifications);
-        
-        // Show immediate notification for test
-        toast.success(`Test notification set for ${platform} (${dynamicReminderTime} minutes before contest start)`);
-        
-        // Send a direct test notification
-        try {
-          // Initialize if not already initialized
-          await notificationService.init();
-          
-          // Get or refresh FCM token
-          const token = await notificationService.getFCMToken(currentUser.uid);
-          
-          if (token) {
-            // Send test notification through your backend
-            const response = await fetch('/api/send-test-notification', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                token,
-                type: 'contest',
-                notification: {
-                  title: `Test ${platform} Contest Notification`,
-                  body: `${testContest.contestName} on ${platform} (Platform Test)`
-                },
-                data: {
-                  name: testContest.contestName,
-                  platform: platform,
-                  startTime: testContest.startTime,
-                  url: testContest.contestLink,
-                  type: 'contest'
-                }
-              }),
-            });
-
-            if (!response.ok) {
-              console.error('Test notification error:', await response.json());
-            } else {
-              console.log('Test notification sent successfully');
-            }
-          }
-        } catch (error) {
-          console.error('Error sending test notification:', error);
-        }
-        
-        // Trigger the notification handler to process this immediately
-        window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
-          detail: { 
-            notifications: newNotifications,
-            platformNotifications: platformNotifications
-          }
-        }));
-        
-        return;
-      }
-
-      // Regular platform notification toggle
-      const newPlatformNotifications = {
-        ...platformNotifications,
-        [platform]: {
-          enabled: !currentPlatformSettings.enabled,
-          reminderTime: currentPlatformSettings.reminderTime || 30, // Default to 30 minutes if not set
-          updatedAt: new Date().toISOString()
-        }
+      // Store notification data without calculating reminder time
+      const notificationData = {
+        contestTime: contestTime.toISOString(),
+        createdAt: createdAt.toISOString(),
+        platform: selectedContest.platform,
+        isTest,
+        reminderTime: isTest ? 'test' : parseInt(reminderTime),
+        contestName: selectedContest.contestName
       };
 
-      // Update Firestore
-      await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-        platformNotifications: newPlatformNotifications,
+      const userPrefsRef = doc(db, 'userPreferences', currentUser.uid);
+      await setDoc(userPrefsRef, {
+        notifications: {
+          [contestId]: notificationData
+        },
         lastUpdated: new Date().toISOString()
       }, { merge: true });
 
-      setPlatformNotifications(newPlatformNotifications);
+      toast.success(`Reminder set for ${isTest ? '5 seconds' : reminderTime + ' minutes'} before contest start`);
+      setShowNotificationDialog(false);
+    });
+  }, [currentUser, selectedContest, reminderTime, handleAsyncError]);
 
-      // If enabling platform notifications, add all current platform contests
-      if (!currentPlatformSettings.enabled) {
-        const platformContests = filteredContests.filter(c => c.platform === platform);
-        const notifications = userData.notifications || {};
-        const newNotifications = { ...notifications };
+  const handleSetPlatformNotification = useCallback(async (platform) => {
+    if (!currentUser) return;
 
-        platformContests.forEach(contest => {
-          const contestId = `${contest.platform}-${contest.contestName}-${contest.startTime}`;
-          if (!notifications[contestId]) {
-            newNotifications[contestId] = {
-              reminderTime: newPlatformNotifications[platform].reminderTime,
-              contestTime: contest.startTime,
-              disabled: false,
-              isPlatformNotification: true,
-              platform: contest.platform,
-              createdAt: new Date().toISOString()
-            };
-          }
-        });
+    await handleAsyncError(async () => {
+      const contestTime = new Date();
+      contestTime.setSeconds(contestTime.getSeconds() + 5); // Set contest time 5 seconds from now for testing
+      const createdAt = new Date();
+      const dynamicReminderTime = 'test'; // For platform test notifications, always use test mode
 
-        // Update notifications in Firestore
-        await setDoc(doc(db, 'userPreferences', currentUser.uid), {
-          notifications: newNotifications,
-          lastUpdated: new Date().toISOString()
-        }, { merge: true });
+      const notificationData = {
+        contestTime: contestTime.toISOString(),
+        createdAt: createdAt.toISOString(),
+        platform,
+        isTest: true,
+        reminderTime: dynamicReminderTime,
+        isPlatformNotification: true
+      };
 
-        setNotifications(newNotifications);
-      }
+      const userPrefsRef = doc(db, 'userPreferences', currentUser.uid);
+      const testContestId = `${platform}-test-${Date.now()}`;
 
-      // Emit event for notification handler
-      window.dispatchEvent(new CustomEvent('platformNotificationsChanged', {
-        detail: { 
-          notifications: userData.notifications || {},
-          platformNotifications: newPlatformNotifications
-        }
-      }));
+      await setDoc(userPrefsRef, {
+        notifications: {
+          [testContestId]: notificationData
+        },
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
 
-      toast.success(`${platform} notifications ${!currentPlatformSettings.enabled ? 'enabled' : 'disabled'}`);
-    } catch (error) {
-      console.error('Error toggling platform notification:', error);
-      toast.error('Failed to update platform notifications');
-    }
-  }, [currentUser, filteredContests]);
+      toast.success(`Test notification set for ${platform}`);
+    });
+  }, [currentUser, handleAsyncError]);
 
   // Memoize the contest card to prevent unnecessary re-renders
   const ContestCard = useCallback(({ contest }) => {
@@ -837,11 +689,11 @@ export default function ContestsClient({ initialContests, platforms }) {
                     <SelectItem value="60">1 hour before</SelectItem>
                     <SelectItem value="180">3 hours before</SelectItem>
                     <SelectItem value="1440">1 day before</SelectItem>
-                    <SelectItem value="test">Test (2 sec)</SelectItem>
+                    <SelectItem value="test">Test (5 sec)</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="mt-4 flex justify-end">
-                  <Button onClick={setNotificationReminder}>Set Reminder</Button>
+                  <Button onClick={handleSetNotification}>Set Reminder</Button>
                 </div>
               </div>
             </DialogContent>

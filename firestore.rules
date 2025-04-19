@@ -1,24 +1,58 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Helper function to check if user is accessing their own data
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
     // Allow users to read and write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || request.auth.uid == userId;
       
       // Allow users to manage their own FCM tokens
       match /fcmTokens/{tokenId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth.uid == userId;
       }
+    }
+
+    // User preferences collection
+    match /userPreferences/{userId} {
+      allow read, write: if request.auth.uid == userId;
       
-      // Allow users to manage their own preferences
-      match /preferences/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+      // Allow specific fields for notifications
+      allow update: if request.auth.uid == userId 
+        && (request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['notifications', 'lastUpdated', 'platformNotifications', 'favorites']));
     }
     
     // Allow users to read public data
     match /public/{document=**} {
       allow read: if true;
+    }
+
+    // Contests collection
+    match /contests/{contestId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Jobs collection
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 } 

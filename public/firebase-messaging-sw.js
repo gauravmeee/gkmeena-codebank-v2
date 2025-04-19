@@ -4,74 +4,105 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Initialize Firebase
-const firebaseConfig = {
-  apiKey: self.FIREBASE_CONFIG?.apiKey,
-  authDomain: self.FIREBASE_CONFIG?.authDomain,
-  projectId: self.FIREBASE_CONFIG?.projectId,
-  storageBucket: self.FIREBASE_CONFIG?.storageBucket,
-  messagingSenderId: self.FIREBASE_CONFIG?.messagingSenderId,
-  appId: self.FIREBASE_CONFIG?.appId
-};
+let messaging;
 
-try {
-  firebase.initializeApp(firebaseConfig);
-  
-  // Retrieve an instance of Firebase Messaging so that it can handle background messages.
-  const messaging = firebase.messaging();
+// Listen for config from the main thread
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'FIREBASE_CONFIG') {
+    self.FIREBASE_CONFIG = event.data.config;
+    initializeFirebase();
+  }
+});
 
-  // Handle background messages
-  messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message:', payload);
+function initializeFirebase() {
+  if (!self.FIREBASE_CONFIG) {
+    console.error('Firebase config not available');
+    return;
+  }
 
-    const notificationTitle = payload.notification?.title || 'New Notification';
-    const notificationOptions = {
-      body: payload.notification?.body || 'You have a new notification',
-      icon: payload.data?.icon || '/assets/contests/default.png',
-      badge: '/assets/contests/default.png',
-      tag: payload.data?.tag || 'contest-notification',
-      data: payload.data,
-      requireInteraction: true
+  try {
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: self.FIREBASE_CONFIG.apiKey,
+      authDomain: self.FIREBASE_CONFIG.authDomain,
+      projectId: self.FIREBASE_CONFIG.projectId,
+      storageBucket: self.FIREBASE_CONFIG.storageBucket,
+      messagingSenderId: self.FIREBASE_CONFIG.messagingSenderId,
+      appId: self.FIREBASE_CONFIG.appId
     };
 
-    return self.registration.showNotification(notificationTitle, notificationOptions);
-  });
-
-  // Handle notification clicks
-  self.addEventListener('notificationclick', (event) => {
-    console.log('[firebase-messaging-sw.js] Notification clicked:', event);
-    event.notification.close();
-
-    const data = event.notification.data;
-    if (data?.url) {
-      const urlToOpen = new URL(data.url, self.location.origin).href;
-
-      event.waitUntil(
-        clients.matchAll({
-          type: 'window',
-          includeUncontrolled: true
-        })
-        .then((windowClients) => {
-          // Try to focus an existing window
-          for (let i = 0; i < windowClients.length; i++) {
-            const client = windowClients[i];
-            if (client.url === urlToOpen && 'focus' in client) {
-              return client.focus();
-            }
-          }
-          // If no window is found, open a new one
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen);
-          }
-        })
-      );
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
     }
-  });
 
-  console.log('[firebase-messaging-sw.js] Service Worker initialized successfully');
-} catch (error) {
-  console.error('[firebase-messaging-sw.js] Service Worker initialization failed:', error);
+    messaging = firebase.messaging();
+
+    // Handle background messages
+    messaging.onBackgroundMessage((payload) => {
+      console.log('[SW] Received background message:', payload);
+
+      const platform = payload.data?.platform?.toLowerCase() || 'default';
+      const notificationTitle = payload.notification?.title || 'Contest Reminder';
+      const notificationOptions = {
+        body: payload.notification?.body || 'A contest is starting soon!',
+        icon: `/assets/contests/${platform}.png`,
+        badge: '/assets/contests/badge.png',
+        tag: payload.data?.tag || 'contest-reminder',
+        data: {
+          ...payload.data,
+          platform: platform
+        },
+        requireInteraction: true,
+        actions: [
+          { action: 'view', title: 'View Contest' },
+          { action: 'dismiss', title: 'Dismiss' }
+        ]
+      };
+
+      return self.registration.showNotification(notificationTitle, notificationOptions);
+    });
+
+    console.log('[SW] Firebase initialized successfully');
+  } catch (error) {
+    console.error('[SW] Firebase initialization error:', error);
+  }
 }
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event);
+  event.notification.close();
+
+  // Handle notification click
+  const urlToOpen = event.notification.data?.url || '/contests';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Try to focus an existing window
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If no window is found, open a new one
+        return clients.openWindow(urlToOpen);
+      })
+  );
+});
+
+// Log installation
+self.addEventListener('install', (event) => {
+  console.log('[SW] Service Worker installed');
+  self.skipWaiting();
+});
+
+// Log activation
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Service Worker activated');
+  event.waitUntil(clients.claim());
+});
 
 // Track processed request IDs to prevent duplicates
 const processedRequests = new Set();
@@ -86,19 +117,9 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Log when service worker is installed
-self.addEventListener('install', (event) => {
-  console.log('[firebase-messaging-sw.js] Service Worker installed');
-});
-
-// Log when service worker is activated
-self.addEventListener('activate', (event) => {
-  console.log('[firebase-messaging-sw.js] Service Worker activated');
-});
-
 // Handle push events
 self.addEventListener('push', (event) => {
-  console.log('[firebase-messaging-sw.js] Push event received:', event);
+  console.log('[SW] Push event received:', event);
 
   try {
     const data = event.data.json();
@@ -112,7 +133,7 @@ self.addEventListener('push', (event) => {
     
     // Skip if we've shown a notification in the last 2 seconds
     if (now - lastNotificationTime < 2000) {
-      console.log('[firebase-messaging-sw.js] Skipping notification - too soon after last one');
+      console.log('[SW] Skipping notification - too soon after last one');
       return;
     }
     
@@ -121,23 +142,28 @@ self.addEventListener('push', (event) => {
       self.registration.getNotifications({ tag: 'contest-reminder' })
         .then(notifications => {
           if (notifications.length > 0) {
-            console.log('[firebase-messaging-sw.js] Notification with same tag already exists, closing old ones');
+            console.log('[SW] Notification with same tag already exists, closing old ones');
             notifications.forEach(notification => notification.close());
           }
           
           // Show notification based on the push data
-          const notificationTitle = data.notification?.title || 'New Notification';
-          const baseUrl = self.location.origin;
+          const notificationTitle = data.notification?.title || 'Contest Reminder';
+          const platform = data.data?.platform?.toLowerCase() || 'default';
           const notificationOptions = {
-            body: data.notification?.body || 'You have a new notification',
-            icon: data.data?.platform ? `${baseUrl}/assets/contests/${data.data.platform.toLowerCase()}.png` : `${baseUrl}/assets/contests/default.png`,
-            badge: `${baseUrl}/assets/contests/default.png`,
+            body: data.notification?.body || 'A contest is starting soon!',
+            icon: `/assets/contests/${platform}.png`,
+            badge: '/assets/contests/default.png',
             data: {
               ...data.data,
-              id: notificationId
+              id: notificationId,
+              platform: platform
             },
             tag: 'contest-reminder',
-            requireInteraction: true
+            requireInteraction: true,
+            actions: [
+              { action: 'view', title: 'View Contest' },
+              { action: 'dismiss', title: 'Dismiss' }
+            ]
           };
           
           self.lastNotificationTime = now;
@@ -145,6 +171,6 @@ self.addEventListener('push', (event) => {
         })
     );
   } catch (error) {
-    console.error('[firebase-messaging-sw.js] Error processing push data:', error);
+    console.error('[SW] Error processing push data:', error);
   }
 }); 
