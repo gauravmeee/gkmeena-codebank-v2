@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 // Add the time formatting function
@@ -31,6 +31,7 @@ export default function ContestsNotificationHandler() {
     if (!currentUser) return;
 
     let timeoutIds = [];
+    let notificationListener = null;
 
     // Check if browser supports notifications
     const checkNotificationSupport = () => {
@@ -60,86 +61,7 @@ export default function ContestsNotificationHandler() {
       }
     };
 
-    const checkNotifications = async () => {
-      try {
-        if (!currentUser) return;
-        
-        console.log('Checking for notifications...');
-        const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
-        if (!userPrefsDoc.exists()) return;
-        
-        const userData = userPrefsDoc.data();
-        const notifications = userData.notifications || {};
-        const currentTime = new Date();
-        
-        // Process individual contest notifications
-        if (Object.keys(notifications).length > 0) {
-          Object.entries(notifications).forEach(async ([contestId, data]) => {
-            // Skip if it's a platform notification that isn't a test
-            if (data.isPlatformNotification && !data.isTest) return;
-
-            // Calculate the contest time and creation time
-            const contestTime = new Date(data.contestTime);
-            const createdAt = new Date(data.createdAt);
-
-            // For test: calculate reminderTime in minutes such that notification fires 2 sec after creation
-            const reminderTime = data.isTest
-              ? (contestTime.getTime() - (createdAt.getTime() + 2000)) / (60 * 1000)
-              : data.reminderTime;
-            
-            // Calculate the time when the notification should be shown
-            const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
-            
-            // For test notifications, show immediately if within 2 seconds of creation
-            if (data.isTest && currentTime.getTime() - createdAt.getTime() <= 2000) {
-              console.log(`Test notification detected for ${contestId}, showing immediately`);
-              
-              await showNotification(
-                'Test Contest Reminder',
-                `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(reminderTime)} minutes! (TEST)`
-              );
-              
-              await removeNotificationImmediately(contestId);
-              return;
-            }
-            
-            // For regular notifications, check if it's time to show
-            if (notificationTime <= currentTime) {
-              console.log(`Time to show notification for ${contestId}`);
-              
-              showNotification(
-                'Contest Reminder',
-                `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(reminderTime)} minutes!`
-              );
-              
-              await removeNotificationImmediately(contestId);
-            } else {
-              // Schedule the notification
-              const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
-              const timeDisplay = formatTimeUntilNotification(timeUntilNotification);
-              
-              console.log(`Scheduling notification for ${contestId} in ${timeDisplay} (${Math.round(reminderTime)} minutes before contest)`);
-              
-              const timeoutId = setTimeout(async () => {
-                const contestName = contestId.split('-')[1];
-                const platform = contestId.split('-')[0];
-                showNotification(
-                  'Contest Reminder',
-                  `${contestName} on ${platform} starts in ${Math.round(reminderTime)} minutes!`
-                );
-                
-                await removeNotificationImmediately(contestId);
-              }, timeUntilNotification);
-              
-              timeoutIds.push(timeoutId);
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error checking notifications:', error);
-      }
-    };
-
+    // Show notification function
     const showNotification = async (title, body) => {
       // Always show toast notification
       toast.info(body);
@@ -165,8 +87,106 @@ export default function ContestsNotificationHandler() {
       } else if (Notification.permission !== 'denied') {
         const granted = await requestNotificationPermission();
         if (granted) {
-          showNotification(title, body); // Retry showing notification if permission granted
+          showNotification(title, body);
         }
+      }
+    };
+
+    // Function to schedule a notification
+    const scheduleNotification = (contestId, data, notificationTime) => {
+      const currentTime = new Date();
+      const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
+      
+      if (timeUntilNotification <= 0) {
+        // Show notification immediately if we're past the notification time
+        showNotification(
+          'Contest Reminder',
+          `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(data.reminderTime)} minutes!`
+        );
+        removeNotificationImmediately(contestId);
+      } else {
+        console.log(`Scheduling notification for ${contestId} in ${formatTimeUntilNotification(timeUntilNotification)}`);
+        
+        const timeoutId = setTimeout(async () => {
+          showNotification(
+            'Contest Reminder',
+            `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(data.reminderTime)} minutes!`
+          );
+          await removeNotificationImmediately(contestId);
+        }, timeUntilNotification);
+        
+        timeoutIds.push(timeoutId);
+      }
+    };
+
+    const checkNotifications = async () => {
+      try {
+        if (!currentUser) return;
+        
+        console.log('Checking for notifications...');
+        const userPrefsDoc = await getDoc(doc(db, 'userPreferences', currentUser.uid));
+        if (!userPrefsDoc.exists()) return;
+        
+        const userData = userPrefsDoc.data();
+        const notifications = userData.notifications || {};
+        const currentTime = new Date();
+        
+        // Clear existing timeouts
+        timeoutIds.forEach(id => clearTimeout(id));
+        timeoutIds = [];
+        
+        // Process individual contest notifications
+        Object.entries(notifications).forEach(async ([contestId, data]) => {
+          // Skip if it's a platform notification that isn't a test
+          if (data.isPlatformNotification && !data.isTest) return;
+
+          // Calculate the contest time and creation time
+          const contestTime = new Date(data.contestTime);
+          const createdAt = new Date(data.createdAt);
+
+          // For test: calculate reminderTime in minutes such that notification fires 2 sec after creation
+          const reminderTime = data.isTest
+            ? (contestTime.getTime() - (createdAt.getTime() + 2000)) / (60 * 1000)
+            : data.reminderTime;
+          
+          // Calculate the time when the notification should be shown
+          const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
+          
+          // For test notifications, show immediately if within 2 seconds of creation
+          if (data.isTest && currentTime.getTime() - createdAt.getTime() <= 2000) {
+            console.log(`Test notification detected for ${contestId}, showing immediately`);
+            
+            await showNotification(
+              'Test Contest Reminder',
+              `${contestId.split('-')[1]} on ${contestId.split('-')[0]} starts in ${Math.round(reminderTime)} minutes! (TEST)`
+            );
+            
+            await removeNotificationImmediately(contestId);
+            return;
+          }
+          
+          // Schedule or show the notification
+          scheduleNotification(contestId, { ...data, reminderTime }, notificationTime);
+        });
+      } catch (error) {
+        console.error('Error checking notifications:', error);
+      }
+    };
+
+    // Set up real-time listener for notification changes
+    const setupNotificationListener = () => {
+      const userPrefsRef = doc(db, 'userPreferences', currentUser.uid);
+      return onSnapshot(userPrefsRef, (doc) => {
+        if (doc.exists()) {
+          checkNotifications();
+        }
+      });
+    };
+
+    // Check notifications on visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkNotifications();
       }
     };
 
@@ -238,19 +258,20 @@ export default function ContestsNotificationHandler() {
       }
     };
 
-    // Initial check
+    // Initial setup
     checkNotifications();
-    
-    // Clean up expired notifications on component mount
     cleanupExpiredNotifications();
+    
+    // Set up event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    notificationListener = setupNotificationListener();
 
-    // Check every minute for new notifications and clean up expired ones
-    const intervalId = setInterval(() => {
-      checkNotifications();
-      cleanupExpiredNotifications();
-    }, 60000);
+    // Check more frequently (every 15 seconds) for upcoming notifications
+    const intervalId = setInterval(checkNotifications, 15000);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (notificationListener) notificationListener();
       clearInterval(intervalId);
       timeoutIds.forEach(id => clearTimeout(id));
     };

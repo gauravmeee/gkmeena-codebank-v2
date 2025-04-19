@@ -244,8 +244,8 @@ const setupOnMessage = (callback) => {
   messageHandlerUnsubscribe = onMessage(messaging, (payload) => {
     console.log('[notificationService] Received foreground message:', payload);
     
-    // Only show notification if the app is in foreground and visible
-    if (document.visibilityState === 'visible') {
+    // Show notification if it's a test notification or app is not visible
+    if (payload.data?.isTest === 'true' || document.visibilityState !== 'visible') {
       // Generate a unique notification ID
       const notificationId = payload.data?.id || `foreground-${Date.now()}`;
       
