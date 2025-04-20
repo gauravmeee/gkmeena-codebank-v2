@@ -40,6 +40,11 @@ export async function POST(request) {
     const platform = (data.platform || 'default').toLowerCase();
     const origin = request.nextUrl.origin;
 
+    // Generate absolute URLs for icons
+    const iconUrl = `${origin}/assets/contests/${platform}.png`;
+    const badgeUrl = `${origin}/assets/contests/badge.png`;
+    const defaultIconUrl = `${origin}/assets/contests/default.png`;
+
     // Generate a unique notification ID
     const notificationId = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -60,12 +65,14 @@ export async function POST(request) {
           defaultSound: true,
           channelId: 'default',
           visibility: 'public',
-          importance: 'high'
+          importance: 'high',
+          icon: iconUrl // Add icon URL for Android
         },
         data: {
           click_action: 'FLUTTER_NOTIFICATION_CLICK',
           id: notificationId,
           status: 'done',
+          icon: iconUrl, // Add icon URL in data payload
           ...data
         }
       },
@@ -86,6 +93,7 @@ export async function POST(request) {
             'content-available': 1
           },
           notificationId,
+          icon: iconUrl, // Add icon URL for iOS
           ...data
         }
       },
@@ -97,8 +105,8 @@ export async function POST(request) {
         notification: {
           title: notificationPayload.title,
           body: notificationPayload.body,
-          icon: `${origin}/assets/contests/${platform}.png`,
-          badge: `${origin}/assets/contests/badge.png`,
+          icon: iconUrl,
+          badge: badgeUrl,
           image: data.image,
           vibrate: [100, 50, 100],
           requireInteraction: true,
@@ -119,6 +127,8 @@ export async function POST(request) {
             id: notificationId,
             timestamp: new Date().toISOString(),
             scheduledTime: deliveryTime,
+            icon: iconUrl, // Add icon URL in data
+            badge: badgeUrl, // Add badge URL in data
             ...data
           },
           tag: type === 'contest' ? 'contest-reminder' : `${type}-notification`,
@@ -137,6 +147,8 @@ export async function POST(request) {
         scheduledTime: deliveryTime.toString(),
         title: notificationPayload.title,
         body: notificationPayload.body,
+        icon: iconUrl, // Add icon URL in root data
+        badge: badgeUrl, // Add badge URL in root data
         ...data
       }
     };

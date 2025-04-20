@@ -7,6 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 
 let messaging;
 let FIREBASE_CONFIG;
+let BASE_URL = self.location.origin;
 
 // Store scheduled notifications
 const scheduledNotifications = new Map();
@@ -17,7 +18,18 @@ self.addEventListener('message', (event) => {
     FIREBASE_CONFIG = event.data.config;
     initializeFirebase();
   }
+  // Handle base URL updates
+  if (event.data && event.data.type === 'BASE_URL') {
+    BASE_URL = event.data.url;
+  }
 });
+
+// Helper function to get absolute URL for assets
+function getAssetUrl(path) {
+  // Remove leading slash if present
+  path = path.startsWith('/') ? path.slice(1) : path;
+  return `${BASE_URL}/${path}`;
+}
 
 function initializeFirebase() {
   if (!FIREBASE_CONFIG) {
@@ -91,8 +103,8 @@ async function handleBackgroundMessage(payload) {
   const notificationTitle = payload.notification?.title || 'Contest Reminder';
   const notificationOptions = {
     body: payload.notification?.body || 'A contest is starting soon!',
-    icon: `/assets/contests/${platform}.png`,
-    badge: '/assets/contests/badge.png',
+    icon: getAssetUrl(`assets/contests/${platform}.png`),
+    badge: getAssetUrl('assets/contests/badge.png'),
     tag: payload.data?.tag || 'contest-reminder',
     data: {
       ...payload.data,
@@ -106,6 +118,14 @@ async function handleBackgroundMessage(payload) {
     ],
     timestamp: Date.now()
   };
+
+  // Preload the icon
+  try {
+    await fetch(notificationOptions.icon);
+  } catch (error) {
+    console.warn('[SW] Failed to preload icon, falling back to default');
+    notificationOptions.icon = getAssetUrl('assets/contests/default.png');
+  }
 
   await self.registration.showNotification(notificationTitle, notificationOptions);
   self.lastNotificationTime = Date.now();
