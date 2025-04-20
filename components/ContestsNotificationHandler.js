@@ -44,7 +44,8 @@ export default function ContestsNotificationHandler() {
   useEffect(() => {
     if (!currentUser) return;
 
-    let timeoutIds = [];
+    // Use Map instead of array for better timeout management
+    const activeTimeouts = new Map();
     let notificationListener = null;
 
     // Check if browser supports notifications
@@ -75,7 +76,7 @@ export default function ContestsNotificationHandler() {
       }
     };
 
-    // Show notification function
+    // Show notification function with better error handling
     const showNotification = async (title, body, data = {}) => {
       // Always show toast notification
       toast.info(body);
@@ -86,9 +87,14 @@ export default function ContestsNotificationHandler() {
       if (Notification.permission === 'granted') {
         try {
           if ('serviceWorker' in navigator) {
+            // Ensure service worker is ready
             const registration = await navigator.serviceWorker.ready;
             const platform = data.platform?.toLowerCase() || 'default';
             
+            if (!registration.active) {
+              throw new Error('Service worker not active');
+            }
+
             await registration.showNotification(title, {
               body,
               icon: `/assets/contests/${platform}.png`,
@@ -105,39 +111,40 @@ export default function ContestsNotificationHandler() {
           }
         } catch (error) {
           console.error('Error showing notification:', error);
+          // Fallback to just toast if browser notification fails
+          toast.error('Failed to show browser notification');
         }
       } else if (Notification.permission !== 'denied') {
         const granted = await requestNotificationPermission();
         if (granted) {
-          showNotification(title, body, data);
+          await showNotification(title, body, data);
         }
       }
     };
 
-    // Function to schedule a notification
+    // Improved schedule notification function
     const scheduleNotification = (contestId, data, notificationTime) => {
+      // Clear existing timeout for this contest if it exists
+      if (activeTimeouts.has(contestId)) {
+        clearTimeout(activeTimeouts.get(contestId));
+        activeTimeouts.delete(contestId);
+      }
+
       const currentTime = new Date();
       const timeUntilNotification = notificationTime.getTime() - currentTime.getTime();
       const [platform, contestName] = contestId.split('-');
       
+      // Don't schedule if the notification time is in the past
       if (timeUntilNotification <= 0) {
-        // Show notification immediately if we're past the notification time
-        showNotification(
-          'Contest Reminder',
-          `${contestName} on ${platform} starts in ${Math.round(data.reminderTime)} minutes!`,
-          {
-            platform: platform,
-            contestName: contestName,
-            contestId: contestId,
-            startTime: data.contestTime
-          }
-        );
         removeNotificationImmediately(contestId);
-      } else {
-        console.log(`Scheduling notification for ${contestId} in ${formatTimeUntilNotification(timeUntilNotification)}`);
-        
-        const timeoutId = setTimeout(async () => {
-          showNotification(
+        return;
+      }
+
+      console.log(`Scheduling notification for ${contestId} in ${formatTimeUntilNotification(timeUntilNotification)}`);
+      
+      const timeoutId = setTimeout(async () => {
+        try {
+          await showNotification(
             'Contest Reminder',
             `${contestName} on ${platform} starts in ${Math.round(data.reminderTime)} minutes!`,
             {
@@ -148,13 +155,16 @@ export default function ContestsNotificationHandler() {
             }
           );
           await removeNotificationImmediately(contestId);
-        }, timeUntilNotification);
-        
-        timeoutIds.push(timeoutId);
-      }
+          activeTimeouts.delete(contestId);
+        } catch (error) {
+          console.error(`Error in notification timeout for ${contestId}:`, error);
+        }
+      }, timeUntilNotification);
+      
+      activeTimeouts.set(contestId, timeoutId);
     };
 
-    // Update the checkNotifications function to use the new calculation
+    // Improved check notifications function with proper async handling
     const checkNotifications = async () => {
       try {
         if (!currentUser) return;
@@ -165,40 +175,49 @@ export default function ContestsNotificationHandler() {
         
         const userData = userPrefsDoc.data();
         const notifications = userData.notifications || {};
-        const currentTime = new Date();
         
-        // Clear existing timeouts
-        timeoutIds.forEach(id => clearTimeout(id));
-        timeoutIds = [];
-        
-        // Process individual contest notifications
-        Object.entries(notifications).forEach(async ([contestId, data]) => {
-          // Skip if it's a platform notification that isn't a test
-          if (data.isPlatformNotification && !data.isTest) return;
+        // Process notifications in sequence to avoid race conditions
+        for (const [contestId, data] of Object.entries(notifications)) {
+          try {
+            // Skip if it's a platform notification that isn't a test
+            if (data.isPlatformNotification && !data.isTest) continue;
 
-          // Calculate the contest time
-          const contestTime = new Date(data.contestTime);
-          
-          // Calculate the actual reminder time in minutes
-          const reminderTime = calculateReminderTime(data);
-          
-          // Calculate the time when the notification should be shown
-          const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
-          
-          // Schedule or show the notification
-          scheduleNotification(contestId, { ...data, reminderTime }, notificationTime);
-        });
+            const contestTime = new Date(data.contestTime);
+            
+            // Skip if contest is already past
+            if (contestTime < new Date()) {
+              await removeNotificationImmediately(contestId);
+              continue;
+            }
+            
+            const reminderTime = calculateReminderTime(data);
+            const notificationTime = new Date(contestTime.getTime() - (reminderTime * 60 * 1000));
+            
+            // Schedule notification
+            scheduleNotification(contestId, { ...data, reminderTime }, notificationTime);
+          } catch (error) {
+            console.error(`Error processing notification for ${contestId}:`, error);
+          }
+        }
       } catch (error) {
         console.error('Error checking notifications:', error);
       }
     };
 
-    // Set up real-time listener for notification changes
+    // Improved notification listener with debouncing
     const setupNotificationListener = () => {
+      let debounceTimeout;
       const userPrefsRef = doc(db, 'userPreferences', currentUser.uid);
+      
       return onSnapshot(userPrefsRef, (doc) => {
         if (doc.exists()) {
-          checkNotifications();
+          // Clear previous timeout
+          if (debounceTimeout) clearTimeout(debounceTimeout);
+          
+          // Set new timeout
+          debounceTimeout = setTimeout(() => {
+            checkNotifications();
+          }, 1000); // 1 second debounce
         }
       });
     };
@@ -286,14 +305,19 @@ export default function ContestsNotificationHandler() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     notificationListener = setupNotificationListener();
 
-    // Check more frequently (every 15 seconds) for upcoming notifications
-    const intervalId = setInterval(checkNotifications, 15000);
+    // Check notifications less frequently (every minute instead of 15 seconds)
+    const intervalId = setInterval(checkNotifications, 60000);
 
+    // Improved cleanup
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (notificationListener) notificationListener();
       clearInterval(intervalId);
-      timeoutIds.forEach(id => clearTimeout(id));
+      // Clear all active timeouts
+      for (const timeoutId of activeTimeouts.values()) {
+        clearTimeout(timeoutId);
+      }
+      activeTimeouts.clear();
     };
   }, [currentUser]);
 

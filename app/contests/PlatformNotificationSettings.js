@@ -191,7 +191,7 @@ export default function PlatformNotificationSettings({ platforms, initialContest
       }
 
       // Send test notification through your backend
-      const response = await fetch('/api/send-test-notification', {
+      const response = await fetch('/api/schedule', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

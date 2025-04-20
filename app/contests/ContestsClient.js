@@ -419,19 +419,13 @@ export default function ContestsClient({ initialContests, platforms }) {
       }, { merge: true });
 
       // Send test notification immediately through your backend
-      const response = await fetch('/api/send-test-notification', {
+      const response = await fetch('/api/schedule', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Request-ID': requestId
         },
         body: JSON.stringify({
           token: fcmToken,
-          type: 'contest',
-          notification: {
-            title: `Test Notification - ${contest.platform}`,
-            body: `${contest.contestName} - Immediate Test Notification`
-          },
           data: {
             name: contest.contestName,
             platform: contest.platform,
@@ -443,7 +437,8 @@ export default function ContestsClient({ initialContests, platforms }) {
             icon: `/assets/contests/${contest.platform.toLowerCase()}.png`,
             tag: `contest-reminder-${Date.now()}`, // Unique tag for each test
             requestId: requestId
-          }
+          },
+          type: 'contest'
         }),
       });
 

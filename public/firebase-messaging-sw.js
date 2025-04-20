@@ -1,176 +1,192 @@
-// Give the service worker access to Firebase Messaging.
-// Note that you can only use Firebase Messaging here. Other Firebase libraries
-// are not available in the service worker.
+// Cache name for offline support
+const CACHE_NAME = 'notification-cache-v1';
+
+// Import and configure firebase from CDN in the service worker
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
 let messaging;
+let FIREBASE_CONFIG;
 
-// Listen for config from the main thread
+// Store scheduled notifications
+const scheduledNotifications = new Map();
+
+// Handle messages from the main thread
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'FIREBASE_CONFIG') {
-    self.FIREBASE_CONFIG = event.data.config;
+    FIREBASE_CONFIG = event.data.config;
     initializeFirebase();
   }
 });
 
 function initializeFirebase() {
-  if (!self.FIREBASE_CONFIG) {
-    console.error('Firebase config not available');
+  if (!FIREBASE_CONFIG) {
+    console.error('[SW] Firebase config not available');
     return;
   }
 
   try {
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: self.FIREBASE_CONFIG.apiKey,
-      authDomain: self.FIREBASE_CONFIG.authDomain,
-      projectId: self.FIREBASE_CONFIG.projectId,
-      storageBucket: self.FIREBASE_CONFIG.storageBucket,
-      messagingSenderId: self.FIREBASE_CONFIG.messagingSenderId,
-      appId: self.FIREBASE_CONFIG.appId
-    };
-
     if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+      firebase.initializeApp(FIREBASE_CONFIG);
     }
 
     messaging = firebase.messaging();
 
-    // Handle background messages
-    messaging.onBackgroundMessage((payload) => {
+    // Handle background messages with improved error handling and retries
+    messaging.onBackgroundMessage(async (payload) => {
       console.log('[SW] Received background message:', payload);
-
-      const platform = payload.data?.platform?.toLowerCase() || 'default';
-      const notificationTitle = payload.notification?.title || 'Contest Reminder';
-      const notificationOptions = {
-        body: payload.notification?.body || 'A contest is starting soon!',
-        icon: `/assets/contests/${platform}.png`,
-        badge: '/assets/contests/badge.png',
-        tag: payload.data?.tag || 'contest-reminder',
-        data: {
-          ...payload.data,
-          platform: platform
-        },
-        requireInteraction: true,
-        actions: [
-          { action: 'view', title: 'View Contest' },
-          { action: 'dismiss', title: 'Dismiss' }
-        ]
-      };
-
-      return self.registration.showNotification(notificationTitle, notificationOptions);
+      
+      try {
+        await handleBackgroundMessage(payload);
+      } catch (error) {
+        console.error('[SW] Error handling background message:', error);
+        // Retry once after a short delay
+        setTimeout(async () => {
+          try {
+            await handleBackgroundMessage(payload);
+          } catch (retryError) {
+            console.error('[SW] Retry failed:', retryError);
+          }
+        }, 1000);
+      }
     });
 
     console.log('[SW] Firebase initialized successfully');
   } catch (error) {
     console.error('[SW] Firebase initialization error:', error);
+    // Retry initialization after a delay
+    setTimeout(initializeFirebase, 5000);
   }
 }
 
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event);
-  event.notification.close();
-
-  // Handle notification click
-  const urlToOpen = event.notification.data?.url || '/contests';
+async function handleBackgroundMessage(payload) {
+  const platform = payload.data?.platform?.toLowerCase() || 'default';
+  const notificationId = payload.data?.id || `background-${Date.now()}`;
   
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
-        // Try to focus an existing window
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          if (client.url === urlToOpen && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        // If no window is found, open a new one
-        return clients.openWindow(urlToOpen);
-      })
-  );
-});
-
-// Log installation
-self.addEventListener('install', (event) => {
-  console.log('[SW] Service Worker installed');
-  self.skipWaiting();
-});
-
-// Log activation
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Service Worker activated');
-  event.waitUntil(clients.claim());
-});
-
-// Track processed request IDs to prevent duplicates
-const processedRequests = new Set();
-
-// Handle messages from the main thread
-self.addEventListener('message', (event) => {
-  console.log('Service Worker received message:', event.data);
-  
-  if (event.data.type === 'INIT') {
-    // Store user ID for later use
-    self.userId = event.data.userId;
+  // Check if this is a scheduled notification
+  if (payload.data?.scheduledTime) {
+    const scheduledTime = parseInt(payload.data.scheduledTime);
+    const now = Date.now();
+    
+    if (scheduledTime > now) {
+      // Store for later delivery
+      scheduledNotifications.set(notificationId, {
+        payload,
+        scheduledTime
+      });
+      console.log(`[SW] Scheduled notification ${notificationId} for later delivery`);
+      return;
+    }
   }
-});
 
-// Handle push events
-self.addEventListener('push', (event) => {
+  // Rate limiting check
+  const lastNotificationTime = self.lastNotificationTime || 0;
+  const now = Date.now();
+  if (now - lastNotificationTime < 2000) {
+    console.log('[SW] Rate limiting - delaying notification');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  // Show the notification
+  const notificationTitle = payload.notification?.title || 'Contest Reminder';
+  const notificationOptions = {
+    body: payload.notification?.body || 'A contest is starting soon!',
+    icon: `/assets/contests/${platform}.png`,
+    badge: '/assets/contests/badge.png',
+    tag: payload.data?.tag || 'contest-reminder',
+    data: {
+      ...payload.data,
+      platform: platform,
+      id: notificationId
+    },
+    requireInteraction: true,
+    actions: [
+      { action: 'view', title: 'View Contest' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ],
+    timestamp: Date.now()
+  };
+
+  await self.registration.showNotification(notificationTitle, notificationOptions);
+  self.lastNotificationTime = Date.now();
+}
+
+// Handle push events with improved reliability
+self.addEventListener('push', async (event) => {
   console.log('[SW] Push event received:', event);
 
   try {
     const data = event.data.json();
-    
-    // Generate a notification ID if not provided
-    const notificationId = data.data?.id || `push-${Date.now()}`;
-    
-    // Store last notification time in service worker
-    const lastNotificationTime = self.lastNotificationTime || 0;
-    const now = Date.now();
-    
-    // Skip if we've shown a notification in the last 2 seconds
-    if (now - lastNotificationTime < 2000) {
-      console.log('[SW] Skipping notification - too soon after last one');
-      return;
-    }
-    
-    // Check for existing notifications
-    event.waitUntil(
-      self.registration.getNotifications({ tag: 'contest-reminder' })
-        .then(notifications => {
-          if (notifications.length > 0) {
-            console.log('[SW] Notification with same tag already exists, closing old ones');
-            notifications.forEach(notification => notification.close());
-          }
-          
-          // Show notification based on the push data
-          const notificationTitle = data.notification?.title || 'Contest Reminder';
-          const platform = data.data?.platform?.toLowerCase() || 'default';
-          const notificationOptions = {
-            body: data.notification?.body || 'A contest is starting soon!',
-            icon: `/assets/contests/${platform}.png`,
-            badge: '/assets/contests/default.png',
-            data: {
-              ...data.data,
-              id: notificationId,
-              platform: platform
-            },
-            tag: 'contest-reminder',
-            requireInteraction: true,
-            actions: [
-              { action: 'view', title: 'View Contest' },
-              { action: 'dismiss', title: 'Dismiss' }
-            ]
-          };
-          
-          self.lastNotificationTime = now;
-          return self.registration.showNotification(notificationTitle, notificationOptions);
-        })
-    );
+    event.waitUntil(handleBackgroundMessage(data));
   } catch (error) {
-    console.error('[SW] Error processing push data:', error);
+    console.error('[SW] Error handling push event:', error);
   }
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event);
+
+  event.notification.close();
+
+  if (event.action === 'view') {
+    const urlToOpen = event.notification.data?.url || '/contests';
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((windowClients) => {
+        // Check if there is already a window/tab open with the target URL
+        for (let client of windowClients) {
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If no window/tab is open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+    );
+  }
+});
+
+// Periodic check for scheduled notifications
+setInterval(() => {
+  const now = Date.now();
+  scheduledNotifications.forEach((notification, id) => {
+    if (notification.scheduledTime <= now) {
+      handleBackgroundMessage(notification.payload);
+      scheduledNotifications.delete(id);
+    }
+  });
+}, 30000); // Check every 30 seconds
+
+// Service worker installation
+self.addEventListener('install', (event) => {
+  console.log('[SW] Service Worker installing');
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll([
+        '/assets/contests/default.png',
+        '/assets/contests/badge.png'
+      ]);
+    })
+  );
+  self.skipWaiting();
+});
+
+// Service worker activation
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Service Worker activating');
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Clean up old caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((cacheName) => cacheName !== CACHE_NAME)
+            .map((cacheName) => caches.delete(cacheName))
+        );
+      })
+    ])
+  );
 }); 

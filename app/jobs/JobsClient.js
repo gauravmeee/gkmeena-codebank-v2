@@ -205,25 +205,22 @@ export default function JobsClient({ initialJobs = [] }) {
           
           if (token) {
             // Send test notification through your backend
-            const response = await fetch('/api/send-test-notification', {
+            const data = {
+              title: `Test ${company} Job Alert`,
+              body: `${testJob.title} at ${company} (Company Test)`,
+              postedDate: testJob.postedDate,
+              url: testJob.url,
+              type: 'job'
+            };
+            const response = await fetch('/api/schedule', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
                 token,
-                type: 'job',
-                notification: {
-                  title: `Test ${company} Job Alert`,
-                  body: `${testJob.title} at ${company} (Company Test)`
-                },
-                data: {
-                  title: testJob.title,
-                  company: company,
-                  postedDate: testJob.postedDate,
-                  url: testJob.url,
-                  type: 'job'
-                }
+                data,
+                type: 'job'
               }),
             });
 
