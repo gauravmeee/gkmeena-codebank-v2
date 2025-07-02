@@ -62,8 +62,9 @@ export default function RefreshButton() {
       <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end">
         <div style={{ position: 'relative' }}>
           {showTooltip && (
-            <span className="absolute bottom-16 right-0 mb-2 text-xs text-white bg-gray-800 bg-opacity-95 rounded px-3 py-1 shadow border border-gray-700 whitespace-nowrap transition-opacity duration-200" style={{zIndex: 100}}>
-              {lastRefreshed ? getShortRelativeTime(lastRefreshed) : '--'}
+            <span className="absolute bottom-16 right-0 mb-2 text-xs text-neutral-700 dark:text-neutral-100 bg-neutral-50 dark:bg-neutral-800 bg-opacity-90 dark:bg-opacity-90 rounded px-3 py-1 shadow border border-neutral-300 dark:border-neutral-700 whitespace-nowrap transition-opacity duration-200" style={{zIndex: 100}}>
+              Last updated
+              {lastRefreshed ? (' ' + getShortRelativeTime(lastRefreshed)) : '--'}
             </span>
           )}
           <button
