@@ -1,24 +1,15 @@
-import { revalidateTag } from 'next/cache';
 import ContestsClient from './ContestsClient';
+import RefreshButton from './RefreshButton';
 
-// Server Action to update contests and revalidate cache
-export async function updateJobs() {
-  try {
-    await fetch("https://flask-jobs-api.onrender.com/update", { method: "POST" });
-    revalidateTag("contests");
-    return { message: "Jobs updated and cache revalidated" };
-  } catch (error) {
-    console.error("Failed to update jobs:", error);
-    return { message: "Failed to update jobs" };
-  }
-}
 
+// Function to fetch jobs with caching
 async function getContests() {
   try {
+    // Using Next.js fetch with revalidation
     const response = await fetch('https://flask-contest-api.onrender.com/', {
       next: { 
         revalidate: 3600,
-        tags: ['contests']
+        tags: ['contests'] 
       }
     });
 
@@ -53,8 +44,13 @@ export default async function ContestsPage() {
     normalizedContests.map(contest => contest.platform)
   )].sort();
 
-  return (      
-    <ContestsClient initialContests={normalizedContests} platforms={platforms} />
+  return (
+    <div className="relative">
+      <ContestsClient initialContests={normalizedContests} platforms={platforms} />
+      <div className="fixed bottom-4 right-4 z-50">
+        <RefreshButton />
+      </div>
+    </div>
   );
 }
 

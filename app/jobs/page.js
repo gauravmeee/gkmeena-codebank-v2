@@ -4,7 +4,7 @@ import { revalidateTag } from 'next/cache';
 // Server Action to update jobs and revalidate cache
 export async function updateJobs() {
   try {
-    await fetch("https://flask-jobs-api.onrender.com/update", { method: "POST" });
+    await fetch("https://flask-jobs-api.onrender.com", { method: "POST" });
     revalidateTag("jobs");
     return { message: "Jobs updated and cache revalidated" };
   } catch (error) {
