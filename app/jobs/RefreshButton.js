@@ -1,26 +1,96 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, useEffect, useState, useRef } from 'react';
 import { RefreshCcw } from 'lucide-react';
-import updateContests from './updateJobs';
+import updateJobs from './updateJobs';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
+// Helper to format relative time
+function getRelativeTime(date) {
+  if (!date) return '';
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000); // in seconds
+  if (diff < 60) return `${diff} seconds ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+  return `${Math.floor(diff / 86400)} days ago`;
+}
+
+function getShortRelativeTime(date) {
+  if (!date) return '';
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000); // in seconds
+  if (diff < 60) return `${diff} sec ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)} d ago`;
+}
 
 export default function RefreshButton() {
   const [isPending, startTransition] = useTransition();
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipTimeout = useRef(null);
+
+  // Fetch last refreshed time from Firestore
+  const fetchLastRefreshed = async () => {
+    try {
+      const docSnap = await getDoc(doc(db, 'public', 'lastRefreshedJobs'));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setLastRefreshed(data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt));
+      }
+    } catch (e) {
+      setLastRefreshed(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchLastRefreshed();
+  }, []);
+
+  const handleShowTooltip = () => {
+    setShowTooltip(true);
+    if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+    tooltipTimeout.current = setTimeout(() => setShowTooltip(false), 2000);
+  };
+  const handleHideTooltip = () => {
+    setShowTooltip(false);
+    if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+  };
 
   const handleClick = () => {
     startTransition(async () => {
       const res = await updateJobs();
       alert(res.message);
+      await fetchLastRefreshed(); // Refresh the time after update
     });
   };
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={isPending}
-      className="fixed bottom-4 right-4 p-3 bg-blue-500 text-white rounded-full shadow flex items-center justify-center w-14 h-14"
-    >
-      <RefreshCcw className={`w-6 h-6 ${isPending ? 'animate-spin' : ''}`} />
-    </button>
+    <div>
+      <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end">
+        <div style={{ position: 'relative' }}>
+          {showTooltip && (
+            <span className="absolute bottom-16 right-0 mb-2 text-xs text-white bg-gray-800 bg-opacity-95 rounded px-3 py-1 shadow border border-gray-700 whitespace-nowrap transition-opacity duration-200" style={{zIndex: 100}}>
+              {lastRefreshed ? getShortRelativeTime(lastRefreshed) : '--'}
+            </span>
+          )}
+          <button
+            onClick={handleClick}
+            onMouseEnter={handleShowTooltip}
+            onFocus={handleShowTooltip}
+            onMouseLeave={handleHideTooltip}
+            onBlur={handleHideTooltip}
+            disabled={isPending}
+            className="p-3 bg-blue-500 text-white rounded-full shadow flex items-center justify-center w-14 h-14"
+            aria-label="Refresh jobs"
+          >
+            <RefreshCcw className={`w-6 h-6 ${isPending ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
