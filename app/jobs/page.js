@@ -1,17 +1,6 @@
 import JobsClient from './JobsClient';
-import { revalidateTag } from 'next/cache';
+import RefreshButton from './RefreshButton';
 
-// Server Action to update jobs and revalidate cache
-export async function updateJobs() {
-  try {
-    await fetch("https://flask-jobs-api.onrender.com", { method: "POST" });
-    revalidateTag("jobs");
-    return { message: "Jobs updated and cache revalidated" };
-  } catch (error) {
-    console.error("Failed to update jobs:", error);
-    return { message: "Failed to update jobs" };
-  }
-}
 
 // Function to fetch jobs with caching
 async function getJobs() {
@@ -45,6 +34,15 @@ export default async function JobsPage() {
   // Fetch data on the server
   const jobs = await getJobs();
   
-  return <JobsClient initialJobs={jobs} />;
+  return (
+    <div className="relative">
+      <JobsClient initialJobs={jobs} />
+      <div className="fixed bottom-4 right-4 z-50">
+        <RefreshButton />
+      </div>
+    </div>
+  );
 }
+
+
 

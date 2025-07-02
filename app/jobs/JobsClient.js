@@ -314,7 +314,7 @@ export default function JobsClient({ initialJobs = [] }) {
           Tech Jobs
         </h2>
         
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="sm:absolute sm:right-0 mt-2 sm:mt-0 flex items-center gap-4">
           <Link href="/jobs/favorites">
             <Button variant="outline" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
