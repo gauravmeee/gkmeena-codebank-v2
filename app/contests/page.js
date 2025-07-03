@@ -1,5 +1,6 @@
 import ContestsClient from './ContestsClient';
 import RefreshButton from './RefreshButton';
+import admin from '@/lib/firebaseAdmin';
 
 
 // Function to fetch jobs with caching
@@ -14,6 +15,14 @@ async function getContests() {
     });
 
     const data = await response.json();
+    // Update Firestore with last refreshed time on every fetch
+    try {
+      await admin.firestore().collection('public').doc('lastRefreshedContests').set({
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    } catch (firestoreError) {
+      console.error('Failed to update Firestore lastRefreshedContests:', firestoreError);
+    }
     return data.contests || [];
   } catch (error) {
     console.error("Failed to fetch contests:", error);
