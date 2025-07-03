@@ -88,7 +88,7 @@ export default function RefreshButton() {
             className="p-3 bg-blue-500 text-white rounded-full shadow flex items-center justify-center w-14 h-14"
             aria-label="Refresh jobs"
           >
-            <RefreshCcw className={`w-6 h-6 ${isPending ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`h-6 w-6 ${isPending ? 'animate-spin' : ''}`} style={{ animationDirection: 'reverse' }} />
           </button>
         </div>
       </div>

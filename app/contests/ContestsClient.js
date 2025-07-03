@@ -623,6 +623,8 @@ export default function ContestsClient({ initialContests, platforms }) {
     );
   }, [favorites, notifications, handleNotificationClick, toggleFavorite]);
 
+  const filtersApplied = selectedPlatforms.length > 0 || groupBy !== 'none';
+
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
@@ -694,19 +696,33 @@ export default function ContestsClient({ initialContests, platforms }) {
             </DialogContent>
           </Dialog>
 
-          {sortedEntries.map(([group, groupContests]) => (
-            <div key={group} className="mb-8">
-              {group && <h3 className="text-xl font-semibold mb-2">{group}</h3>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {groupContests.map((contest) => (
-                  <ContestCard 
-                    key={`${contest.platform}-${contest.contestName}-${contest.startTime}`} 
-                    contest={contest} 
-                  />
-                ))}
-              </div>
+          {initialContests.length === 0 ? (
+            <div className="flex items-center justify-center min-h-[200px]">
+              <p className="text-center text-base sm:text-lg text-gray-500">
+                No contests available right now.
+              </p>
             </div>
-          ))}
+          ) : filteredContests.length === 0 && filtersApplied ? (
+            <div className="flex items-center justify-center min-h-[200px]">
+              <p className="text-center text-base sm:text-lg text-gray-500">
+                No contests available for the selected filters.
+              </p>
+            </div>
+          ) : (
+            sortedEntries.map(([group, groupContests]) => (
+              <div key={group} className="mb-8">
+                {group && <h3 className="text-xl font-semibold mb-2">{group}</h3>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {groupContests.map((contest) => (
+                    <ContestCard 
+                      key={`${contest.platform}-${contest.contestName}-${contest.startTime}`} 
+                      contest={contest} 
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </ErrorBoundary>

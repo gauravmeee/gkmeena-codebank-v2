@@ -307,13 +307,14 @@ export default function JobsClient({ initialJobs = [] }) {
     }
   }, [currentUser, filteredJobs]);
 
+  const filtersApplied = selectedBatchYears.length > 0 || selectedJobTypes.length > 0;
+
   return (
     <div className="min-h-screen px-4 sm:px-6 py-6 max-w-7xl mx-auto backdrop-blur">
-      <div className="flex flex-col items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-center justify-center relative mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">
           Tech Jobs
         </h2>
-        
         <div className="sm:absolute sm:right-0 mt-2 sm:mt-0 flex items-center gap-4">
           <Link href="/jobs/favorites">
             <Button variant="outline" className="flex items-center gap-2">
@@ -340,8 +341,14 @@ export default function JobsClient({ initialJobs = [] }) {
         </div>
       </div>
       
-      {filteredJobs.length === 0 ? (
-        <div className="flex items-center justify-center min-h-[200px]">
+      {initialJobs.length === 0 ? (
+        <div className="flex items-center justify-center min-h-[200px]" aria-live="polite">
+          <p className="text-center text-base sm:text-lg text-gray-500">
+            No jobs available right now.
+          </p>
+        </div>
+      ) : filteredJobs.length === 0 && filtersApplied ? (
+        <div className="flex items-center justify-center min-h-[200px]" aria-live="polite">
           <p className="text-center text-base sm:text-lg text-gray-500">
             No jobs available for the selected filters.
           </p>

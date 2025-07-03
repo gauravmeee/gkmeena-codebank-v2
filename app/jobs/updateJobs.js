@@ -7,13 +7,28 @@ import admin from '@/lib/firebaseAdmin';
 // Server Action to update jobs and revalidate cache
 export default async function updateJobs() {
   try {
-    await fetch("https://flask-jobs-api.onrender.com", { method: "POST" });
+    // Fetch latest jobs from external API
+    const response = await fetch("https://flask-jobs-api.onrender.com/");
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    const jobs = await response.json();
+
+    // Get current jobs from Firestore
+    const docRef = admin.firestore().collection('public').doc('jobsData');
+    const docSnap = await docRef.get();
+    const currentJobs = docSnap.exists ? docSnap.data().jobs : [];
+
+    // Compare new data with current data
+    const isChanged = JSON.stringify(currentJobs) !== JSON.stringify(jobs);
+    if (isChanged) {
+      // Update jobs data and last refreshed time
+      await docRef.set({
+        jobs,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+    // Always revalidate cache
     revalidateTag("jobs");
-    // Update Firestore with last refreshed time
-    await admin.firestore().collection('public').doc('lastRefreshedJobs').set({
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    return { message: "Jobs updated and cache revalidated" };
+    return { message: isChanged ? "Jobs updated and cache revalidated" : "No changes in jobs data" };
   } catch (error) {
     console.error("Failed to update jobs:", error);
     return { message: "Failed to update jobs" };

@@ -248,7 +248,7 @@ export default function PlatformNotificationSettings({ platforms, initialContest
         onClick={() => setShowSettings(true)}
       >
         <Bell className="h-4 w-4" />
-        notifications
+        Notifications
       </Button>
 
       <Dialog open={showSettings} onOpenChange={setShowSettings}>

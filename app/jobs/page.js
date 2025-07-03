@@ -2,34 +2,16 @@ import JobsClient from './JobsClient';
 import RefreshButton from './RefreshButton';
 import admin from '@/lib/firebaseAdmin';
 
-
-// Function to fetch jobs with caching
+// Function to fetch jobs from Firestore
 async function getJobs() {
   try {
-    // Using Next.js fetch with revalidation
-    const response = await fetch('https://flask-jobs-api.onrender.com/', {
-      next: { 
-        revalidate: 3600,
-        tags: ['jobs'] // Add a cache tag
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.status}`);
+    const docSnap = await admin.firestore().collection('public').doc('jobsData').get();
+    if (docSnap.exists) {
+      return docSnap.data().jobs || [];
     }
-    
-    const data = await response.json();
-    // Update Firestore with last refreshed time on every fetch
-    try {
-      await admin.firestore().collection('public').doc('lastRefreshedJobs').set({
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    } catch (firestoreError) {
-      console.error('Failed to update Firestore lastRefreshedJobs:', firestoreError);
-    }
-    return data;
+    return [];
   } catch (error) {
-    console.error("Failed to fetch jobs:", error);
+    console.error("Failed to fetch jobs from Firestore:", error);
     return [];
   }
 }
@@ -46,10 +28,10 @@ export default async function JobsPage() {
   
   return (
     <div className="relative">
-      <JobsClient initialJobs={jobs} />
       <div className="fixed bottom-4 right-4 z-50">
         <RefreshButton />
       </div>
+      <JobsClient initialJobs={jobs} />
     </div>
   );
 }
