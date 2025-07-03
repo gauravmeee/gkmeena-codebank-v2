@@ -1,4 +1,3 @@
-
 # CodeBank
 
 **CodeBank** is a platform that allows users to access a collection of resources such as Notes, Contests, and Jobs. It provides an easy-to-use interface with seamless navigation, a clean design, and dynamic content fetching from APIs.
@@ -81,6 +80,76 @@ The app fetches contests data from an my Flask API hosted on Render.
 - `/notes` : Access to programming notes
 - `/contests` : View upcoming contests
 - `/jobs` : Browse job listings
+
+## Automated Firestore Updates (Contests & Jobs)
+
+To ensure that the contests and jobs lists in Firestore are always up-to-date, this project uses **Vercel Cron Jobs** to automatically refresh the data every 6 hours.
+
+- Two API endpoints are provided:
+  - `POST /api/cron/update-contests` — Updates contests data in Firestore.
+  - `POST /api/cron/update-jobs` — Updates jobs data in Firestore.
+- Vercel Cron Jobs are configured to trigger these endpoints every 6 hours (`0 */6 * * *`).
+- This ensures that even if no one manually refreshes the data, the latest contests and jobs are always available to users.
+
+**How it works:**
+1. The backend fetches the latest contests and jobs from their respective APIs.
+2. If there are changes, Firestore is updated and the cache is revalidated.
+3. The update runs automatically every 6 hours via Vercel Cron Jobs.
+
+You can also trigger these updates manually by sending a POST request to the above endpoints.
+
+## Setting Up Vercel Cron Jobs
+
+To automate the updating of contests and jobs in Firestore, you need to configure Vercel Cron Jobs using the `vercel.json` file in your project root.
+
+### 1. Add or Update `vercel.json`
+
+Create or edit a `vercel.json` file in your project root with the following content:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/update-contests",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/update-jobs",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}
+```
+
+This schedules both endpoints to run every 6 hours.
+
+### 2. (Recommended) Secure Your Cron Endpoints
+
+Add a secret to your project:
+- Go to your Vercel dashboard → Project Settings → Environment Variables.
+- Add a variable:
+  - **Name:** `CRON_SECRET`
+  - **Value:** (choose a strong secret, e.g., `my-very-secret-cron-key`)
+
+Update your API route handlers to check for this secret:
+
+```js
+export async function POST(request) {
+  const auth = request.headers.get('Authorization');
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // ...rest of your code
+}
+```
+
+### 3. Deploy
+
+Push your changes to your repository. Vercel will automatically pick up the new cron jobs and environment variables on deployment.
+
+### 4. Verify
+
+After deployment, check the Cron Jobs section in your Vercel dashboard to ensure your jobs are scheduled and running.
 
 ## Folder Structure
 

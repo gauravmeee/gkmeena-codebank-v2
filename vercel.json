@@ -1,0 +1,12 @@
+{
+    "crons": [
+      {
+        "path": "/api/cron/update-contests",
+        "schedule": "0 */6 * * *"
+      },
+      {
+        "path": "/api/cron/update-jobs",
+        "schedule": "0 */6 * * *"
+      }
+    ]
+  }
