@@ -5,6 +5,7 @@ import { RefreshCcw } from 'lucide-react';
 import updateJobs from './updateJobs';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 // Helper to format relative time
 function getRelativeTime(date) {
@@ -36,10 +37,20 @@ export default function RefreshButton() {
   // Fetch last refreshed time from Firestore
   const fetchLastRefreshed = async () => {
     try {
-      const docSnap = await getDoc(doc(db, 'public', 'lastRefreshedJobs'));
+      const docSnap = await getDoc(doc(db, 'public', 'jobsData'));
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setLastRefreshed(data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt));
+        let lastRefreshed = null;
+        if (data.updatedAt) {
+          if (typeof data.updatedAt.toDate === 'function') {
+            lastRefreshed = data.updatedAt.toDate();
+          } else if (typeof data.updatedAt === 'string' || typeof data.updatedAt === 'number') {
+            lastRefreshed = new Date(data.updatedAt);
+          }
+        }
+        setLastRefreshed(lastRefreshed && !isNaN(lastRefreshed) ? lastRefreshed : null);
+      } else {
+        setLastRefreshed(null);
       }
     } catch (e) {
       setLastRefreshed(null);
@@ -62,9 +73,13 @@ export default function RefreshButton() {
 
   const handleClick = () => {
     startTransition(async () => {
-      const res = await updateJobs();
-      alert(res.message);
-      await fetchLastRefreshed(); // Refresh the time after update
+      try {
+        const res = await updateJobs();
+        toast.success(res.message || 'Jobs updated successfully');
+        await fetchLastRefreshed(); // Refresh the time after update
+      } catch (error) {
+        toast.error('Failed to refresh jobs. Please try again.');
+      }
     });
   };
 

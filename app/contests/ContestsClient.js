@@ -623,6 +623,7 @@ export default function ContestsClient({ initialContests, platforms }) {
     );
   }, [favorites, notifications, handleNotificationClick, toggleFavorite]);
 
+  // Determine if filters are actually applied
   const filtersApplied = selectedPlatforms.length > 0 || groupBy !== 'none';
 
   return (
@@ -702,10 +703,10 @@ export default function ContestsClient({ initialContests, platforms }) {
                 No contests available right now.
               </p>
             </div>
-          ) : filteredContests.length === 0 && filtersApplied ? (
+          ) : filteredContests.length === 0 ? (
             <div className="flex items-center justify-center min-h-[200px]">
               <p className="text-center text-base sm:text-lg text-gray-500">
-                No contests available for the selected filters.
+                {filtersApplied ? 'No contests available for the selected filters.' : 'No contests available right now.'}
               </p>
             </div>
           ) : (

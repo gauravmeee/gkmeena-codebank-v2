@@ -307,6 +307,7 @@ export default function JobsClient({ initialJobs = [] }) {
     }
   }, [currentUser, filteredJobs]);
 
+  // Determine if filters are actually applied
   const filtersApplied = selectedBatchYears.length > 0 || selectedJobTypes.length > 0;
 
   return (
@@ -347,10 +348,10 @@ export default function JobsClient({ initialJobs = [] }) {
             No jobs available right now.
           </p>
         </div>
-      ) : filteredJobs.length === 0 && filtersApplied ? (
+      ) : filteredJobs.length === 0 ? (
         <div className="flex items-center justify-center min-h-[200px]" aria-live="polite">
           <p className="text-center text-base sm:text-lg text-gray-500">
-            No jobs available for the selected filters.
+            {filtersApplied ? 'No jobs available for the selected filters.' : 'No jobs available right now.'}
           </p>
         </div>
       ) : currentGroupBy === 'date' ? (
