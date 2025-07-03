@@ -19,3 +19,18 @@ export default async function updateJobs() {
     return { message: "Failed to update jobs" };
   }
 }
+
+async function getJobs() {
+  try {
+    const response = await fetch('https://flask-jobs-api.onrender.com/', {
+      next: { revalidate: 3600, tags: ['jobs'] }
+    });
+    if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+    const data = await response.json();
+    // Ensure data is always an array
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Failed to fetch jobs:", error);
+    return [];
+  }
+}
