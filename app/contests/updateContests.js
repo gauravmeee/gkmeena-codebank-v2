@@ -19,16 +19,14 @@ export default async function updateContests() {
 
       // Compare new data with current data
       const isChanged = JSON.stringify(currentContests) !== JSON.stringify(contests);
-      if (isChanged) {
-        // Update contests data and last refreshed time
-        await docRef.set({
-          contests,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      }
+      // Always update contests and updatedAt if fetch is successful
+      await docRef.set({
+        contests,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
       // Always revalidate cache
       revalidateTag("contests");
-      return { message: isChanged ? "Contests updated and cache revalidated" : "No changes in contests data" };
+      return { message: isChanged ? "Contests updated and cache revalidated" : "No changes in contests data, but time updated" };
     } catch (error) {
       console.error("Failed to update Contests:", error);
       return { message: "Failed to update Contests" };

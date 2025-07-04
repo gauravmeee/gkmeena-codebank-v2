@@ -19,16 +19,14 @@ export default async function updateJobs() {
 
     // Compare new data with current data
     const isChanged = JSON.stringify(currentJobs) !== JSON.stringify(jobs);
-    if (isChanged) {
-      // Update jobs data and last refreshed time
-      await docRef.set({
-        jobs,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    }
+    // Always update jobs and updatedAt if fetch is successful
+    await docRef.set({
+      jobs,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
     // Always revalidate cache
     revalidateTag("jobs");
-    return { message: isChanged ? "Jobs updated and cache revalidated" : "No changes in jobs data" };
+    return { message: isChanged ? "Jobs updated and cache revalidated" : "No changes in jobs data, but time updated" };
   } catch (error) {
     console.error("Failed to update jobs:", error);
     return { message: "Failed to update jobs" };
