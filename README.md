@@ -88,7 +88,7 @@ To ensure that the contests and jobs lists in Firestore are always up-to-date, t
 - Two API endpoints are provided:
   - `POST /api/cron/update-contests` — Updates contests data in Firestore.
   - `POST /api/cron/update-jobs` — Updates jobs data in Firestore.
-- Vercel Cron Jobs are configured to trigger these endpoints every 6 hours (`0 */24 * * *`).
+- Vercel Cron Jobs are configured to trigger these endpoints every 6 hours (`0 0 * * *`).
 - This ensures that even if no one manually refreshes the data, the latest contests and jobs are always available to users.
 
 **How it works:**
@@ -111,15 +111,33 @@ Create or edit a `vercel.json` file in your project root with the following cont
   "crons": [
     {
       "path": "/api/cron/update-contests",
-      "schedule": "0 */24 * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/update-jobs",
-      "schedule": "0 */24 * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
 ```
+```
+Minute | Hour | Day of Month | Month | Day of Week
+   0   | */6  |      *       |   *   |     *
+```
+**⏰ Cron Job Schedule Examples**
+
+| Expression     | Description                        |
+|----------------|------------------------------------|
+| `0 0 * * *`     | Every day at midnight (12:00 AM)   |
+| `0 9 * * *`     | Every day at 9:00 AM               |
+| `0 */6 * * *`   | Every 6 hours (0, 6, 12, 18)        |
+| `30 14 * * 1`   | Every Monday at 2:30 PM            |
+| `0 0 1 * *`     | On the 1st of every month at 12 AM |
+| `*/5 * * * *`   | Every 5 minutes                    |
+| `0 0 */2 * *`   | Every 2 days at midnight           |
+
+> 📝 Tip: Cron uses the format → `minute hour day month weekday`
+
 
 This schedules both endpoints to run every 6 hours.
 
