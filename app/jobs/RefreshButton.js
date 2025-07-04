@@ -7,16 +7,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
-// Helper to format relative time
-function getRelativeTime(date) {
-  if (!date) return '';
-  const now = new Date();
-  const diff = Math.floor((now - date) / 1000); // in seconds
-  if (diff < 60) return `${diff} seconds ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-  return `${Math.floor(diff / 86400)} days ago`;
-}
+
 
 function getShortRelativeTime(date) {
   if (!date) return '';

@@ -83,12 +83,12 @@ The app fetches contests data from an my Flask API hosted on Render.
 
 ## Automated Firestore Updates (Contests & Jobs)
 
-To ensure that the contests and jobs lists in Firestore are always up-to-date, this project uses **Vercel Cron Jobs** to automatically refresh the data every 6 hours.
+To ensure that the contests and jobs lists in Firestore are always up-to-date, this project uses **Vercel Cron Jobs** to automatically refresh the data every 24 hours.
 
 - Two API endpoints are provided:
   - `POST /api/cron/update-contests` — Updates contests data in Firestore.
   - `POST /api/cron/update-jobs` — Updates jobs data in Firestore.
-- Vercel Cron Jobs are configured to trigger these endpoints every 6 hours (`0 */6 * * *`).
+- Vercel Cron Jobs are configured to trigger these endpoints every 6 hours (`0 */24 * * *`).
 - This ensures that even if no one manually refreshes the data, the latest contests and jobs are always available to users.
 
 **How it works:**
@@ -111,11 +111,11 @@ Create or edit a `vercel.json` file in your project root with the following cont
   "crons": [
     {
       "path": "/api/cron/update-contests",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 */24 * * *"
     },
     {
       "path": "/api/cron/update-jobs",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 */24 * * *"
     }
   ]
 }
