@@ -124,6 +124,7 @@ Create or edit a `vercel.json` file in your project root with the following cont
 Minute | Hour | Day of Month | Month | Day of Week
    0   | */6  |      *       |   *   |     *
 ```
+
 **⏰ Cron Job Schedule Examples**
 
 | Expression     | Description                        |

@@ -6,6 +6,7 @@ export async function POST() {
   return NextResponse.json(result);
 }
 
-export function GET() {
-  return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
-} 
+export async function GET() {
+  const result = await updateJobs();
+  return NextResponse.json(result);
+}
