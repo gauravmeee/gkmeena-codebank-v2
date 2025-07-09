@@ -82,7 +82,7 @@ export default function FavoriteJobs() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <h1 className="text-2xl font-semibold">Please sign in to view your favorite jobs</h1>
-        <Link href="/auth/signin">
+        <Link href="/auth/login">
           <Button>Sign In</Button>
         </Link>
       </div>
