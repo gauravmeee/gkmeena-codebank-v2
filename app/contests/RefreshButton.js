@@ -62,11 +62,31 @@ export default function RefreshButton() {
 
   const handleClick = () => {
     startTransition(async () => {
+      let success = false;
+      let lastError = null;
+      // First attempt
       try {
         const res = await updateContests();
         toast.success(res.message || 'Contests updated successfully');
-        await fetchLastRefreshed(); // Refresh the time after update
+        await fetchLastRefreshed();
+        success = true;
       } catch (error) {
+        lastError = error;
+      }
+      // If first attempt failed, wait 15 seconds and retry (Render cold start workaround)
+      if (!success) {
+        toast.info('API is waking up, will retry in 15 seconds…');
+        await new Promise(resolve => setTimeout(resolve, 15000));
+        try {
+          const res = await updateContests();
+          toast.success(res.message || 'Contests updated successfully');
+          await fetchLastRefreshed();
+          success = true;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (!success) {
         toast.error('Failed to refresh contests. Please try again.');
       }
     });

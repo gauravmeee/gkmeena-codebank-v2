@@ -72,37 +72,17 @@ function initializeFirebase() {
 }
 
 async function handleBackgroundMessage(payload) {
+  console.log('[SW] handleBackgroundMessage payload:', payload);
+
   const platform = payload.data?.platform?.toLowerCase() || 'default';
   const notificationId = payload.data?.id || `background-${Date.now()}`;
-  
-  // Check if this is a scheduled notification
-  if (payload.data?.scheduledTime) {
-    const scheduledTime = parseInt(payload.data.scheduledTime);
-    const now = Date.now();
-    
-    if (scheduledTime > now) {
-      // Store for later delivery
-      scheduledNotifications.set(notificationId, {
-        payload,
-        scheduledTime
-      });
-      console.log(`[SW] Scheduled notification ${notificationId} for later delivery`);
-      return;
-    }
-  }
 
-  // Rate limiting check
-  const lastNotificationTime = self.lastNotificationTime || 0;
-  const now = Date.now();
-  if (now - lastNotificationTime < 2000) {
-    console.log('[SW] Rate limiting - delaying notification');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
+  // Fallbacks for notification content
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'Contest Reminder';
+  const notificationBody = payload.notification?.body || payload.data?.body || 'A contest is starting soon!';
 
-  // Show the notification
-  const notificationTitle = payload.notification?.title || 'Contest Reminder';
   const notificationOptions = {
-    body: payload.notification?.body || 'A contest is starting soon!',
+    body: notificationBody,
     icon: getAssetUrl(`assets/contests/${platform}.png`),
     badge: getAssetUrl('assets/contests/badge.png'),
     tag: payload.data?.tag || 'contest-reminder',
@@ -136,8 +116,13 @@ self.addEventListener('push', async (event) => {
   console.log('[SW] Push event received:', event);
 
   try {
-    const data = event.data.json();
-    event.waitUntil(handleBackgroundMessage(data));
+    if (event.data) {
+      const data = event.data.json();
+      console.log('[SW] Push event data:', data);
+      event.waitUntil(handleBackgroundMessage(data));
+    } else {
+      console.warn('[SW] Push event with no data!');
+    }
   } catch (error) {
     console.error('[SW] Error handling push event:', error);
   }
