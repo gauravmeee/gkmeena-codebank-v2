@@ -32,11 +32,94 @@ export default function JobsClient({ initialJobs = [] }) {
         setNotifyNewJobs(data.notifyNewJobs || false);
         setCompanyNotifications(data.companyNotifications || {});
         setJobNotifications(data.jobNotifications || {});
+        
+        // Clean up orphaned preferences
+        await cleanupOrphanedPreferences(data);
       }
     } catch (error) {
       console.error('Error fetching user preferences:', error);
     }
   }, [currentUser]);
+
+  // Function to clean up orphaned preferences
+  const cleanupOrphanedPreferences = useCallback(async (userData) => {
+    if (!currentUser || !userData) return;
+
+    try {
+      let hasChanges = false;
+      const updatedData = { ...userData };
+
+      // Clean up orphaned favorites
+      if (userData.jobFavorites && Array.isArray(userData.jobFavorites)) {
+        const validFavorites = userData.jobFavorites.filter(favoriteId => {
+          const [company, role] = favoriteId.split('-');
+          return jobs.some(job => job.company === company && job.role === role);
+        });
+
+        if (validFavorites.length !== userData.jobFavorites.length) {
+          updatedData.jobFavorites = validFavorites;
+          setFavorites(validFavorites);
+          hasChanges = true;
+          console.log(`Cleaned up ${userData.jobFavorites.length - validFavorites.length} orphaned job favorites`);
+        }
+      }
+
+      // Clean up orphaned job notifications
+      if (userData.jobNotifications) {
+        const validNotifications = {};
+        let removedCount = 0;
+
+        Object.entries(userData.jobNotifications).forEach(([jobId, notification]) => {
+          const [company, role] = jobId.split('-');
+          const jobExists = jobs.some(job => job.company === company && job.role === role);
+          
+          if (jobExists) {
+            validNotifications[jobId] = notification;
+          } else {
+            removedCount++;
+          }
+        });
+
+        if (removedCount > 0) {
+          updatedData.jobNotifications = validNotifications;
+          setJobNotifications(validNotifications);
+          hasChanges = true;
+          console.log(`Cleaned up ${removedCount} orphaned job notifications`);
+        }
+      }
+
+      // Clean up orphaned company notifications
+      if (userData.companyNotifications) {
+        const validCompanyNotifications = {};
+        let removedCount = 0;
+
+        Object.entries(userData.companyNotifications).forEach(([company, settings]) => {
+          const companyExists = jobs.some(job => job.company === company);
+          
+          if (companyExists) {
+            validCompanyNotifications[company] = settings;
+          } else {
+            removedCount++;
+          }
+        });
+
+        if (removedCount > 0) {
+          updatedData.companyNotifications = validCompanyNotifications;
+          setCompanyNotifications(validCompanyNotifications);
+          hasChanges = true;
+          console.log(`Cleaned up ${removedCount} orphaned company notifications`);
+        }
+      }
+
+      // Update Firebase if there were changes
+      if (hasChanges) {
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedData, { merge: true });
+        console.log('User preferences synchronized with current job data');
+      }
+    } catch (error) {
+      console.error('Error cleaning up orphaned preferences:', error);
+    }
+  }, [currentUser, jobs]);
 
   useEffect(() => {
     if (currentUser) {
@@ -101,6 +184,11 @@ export default function JobsClient({ initialJobs = [] }) {
   const filteredJobs = jobs.filter(job => {
     // Check batch year filter
     const passesBatchFilter = selectedBatchYears.length === 0 || selectedBatchYears.some(year => {
+      // Handle null/undefined batch_eligible
+      if (!job.batch_eligible) {
+        return false; // If no batch_eligible data, don't pass the filter
+      }
+      
       if (year === '<2024') {
         // Check for any year before 2024 in the batch_eligible string
         return /\b20[0-1][0-9]|2023\b/.test(job.batch_eligible);

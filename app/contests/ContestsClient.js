@@ -138,6 +138,10 @@ export default function ContestsClient({ initialContests, platforms }) {
           const data = userPrefsDoc.data();
           setNotifications(data.notifications || {});
           setPlatformNotifications(data.platformNotifications || {});
+          setFavorites(data.favorites || []);
+          
+          // Clean up orphaned preferences
+          await cleanupOrphanedPreferences(data);
         }
 
         // Initialize notification service
@@ -171,6 +175,94 @@ export default function ContestsClient({ initialContests, platforms }) {
       isMounted = false;
     };
   }, [currentUser, isInitialized]);
+
+  // Function to clean up orphaned preferences
+  const cleanupOrphanedPreferences = useCallback(async (userData) => {
+    if (!currentUser || !userData) return;
+
+    try {
+      let hasChanges = false;
+      const updatedData = { ...userData };
+
+      // Clean up orphaned favorites
+      if (userData.favorites && Array.isArray(userData.favorites)) {
+        const validFavorites = userData.favorites.filter(favoriteId => {
+          const [platform, contestName, startTime] = favoriteId.split('-');
+          return initialContests.some(contest => 
+            contest.platform === platform && 
+            contest.contestName === contestName && 
+            contest.startTime === startTime
+          );
+        });
+
+        if (validFavorites.length !== userData.favorites.length) {
+          updatedData.favorites = validFavorites;
+          setFavorites(validFavorites);
+          hasChanges = true;
+          console.log(`Cleaned up ${userData.favorites.length - validFavorites.length} orphaned contest favorites`);
+        }
+      }
+
+      // Clean up orphaned notifications
+      if (userData.notifications) {
+        const validNotifications = {};
+        let removedCount = 0;
+
+        Object.entries(userData.notifications).forEach(([contestId, notification]) => {
+          const [platform, contestName, startTime] = contestId.split('-');
+          const contestExists = initialContests.some(contest => 
+            contest.platform === platform && 
+            contest.contestName === contestName && 
+            contest.startTime === startTime
+          );
+          
+          if (contestExists) {
+            validNotifications[contestId] = notification;
+          } else {
+            removedCount++;
+          }
+        });
+
+        if (removedCount > 0) {
+          updatedData.notifications = validNotifications;
+          setNotifications(validNotifications);
+          hasChanges = true;
+          console.log(`Cleaned up ${removedCount} orphaned contest notifications`);
+        }
+      }
+
+      // Clean up orphaned platform notifications
+      if (userData.platformNotifications) {
+        const validPlatformNotifications = {};
+        let removedCount = 0;
+
+        Object.entries(userData.platformNotifications).forEach(([platform, settings]) => {
+          const platformExists = initialContests.some(contest => contest.platform === platform);
+          
+          if (platformExists) {
+            validPlatformNotifications[platform] = settings;
+          } else {
+            removedCount++;
+          }
+        });
+
+        if (removedCount > 0) {
+          updatedData.platformNotifications = validPlatformNotifications;
+          setPlatformNotifications(validPlatformNotifications);
+          hasChanges = true;
+          console.log(`Cleaned up ${removedCount} orphaned platform notifications`);
+        }
+      }
+
+      // Update Firebase if there were changes
+      if (hasChanges) {
+        await setDoc(doc(db, 'userPreferences', currentUser.uid), updatedData, { merge: true });
+        console.log('User preferences synchronized with current contest data');
+      }
+    } catch (error) {
+      console.error('Error cleaning up orphaned preferences:', error);
+    }
+  }, [currentUser, initialContests]);
 
   // Add real-time notification updates listener
   useEffect(() => {

@@ -84,15 +84,19 @@ export default function JobCard({ job, isFavorite, onFavoriteToggle, currentUser
               <span className="text-cyan-500 font-bold dark:text-cyan-100">{job.company}</span>
             </p>
 
-            <p className="text-sm sm:text-md text-gray-600 dark:text-gray-300">
-              <span className="font-medium">Batch Eligible:</span>{' '}
-              <span className="text-cyan-500 font-bold dark:text-cyan-100">{job.batch_eligible}</span>
-            </p>
+            {job.batch_eligible && (
+              <p className="text-sm sm:text-md text-gray-600 dark:text-gray-300">
+                <span className="font-medium">Batch Eligible:</span>{' '}
+                <span className="text-cyan-500 font-bold dark:text-cyan-100">{job.batch_eligible}</span>
+              </p>
+            )}
 
-            <p className="text-sm sm:text-md text-gray-600 dark:text-gray-300">
-              <span className="font-medium">Location:</span>{' '}
-              <span className="text-cyan-500 font-bold dark:text-cyan-100">{job.location}</span>
-            </p>
+            {job.location && (
+              <p className="text-sm sm:text-md text-gray-600 dark:text-gray-300">
+                <span className="font-medium">Location:</span>{' '}
+                <span className="text-cyan-500 font-bold dark:text-cyan-100">{job.location}</span>
+              </p>
+            )}
 
             {job.expected_stipend && (
               <p className="text-sm sm:text-md text-gray-600 dark:text-gray-300">
