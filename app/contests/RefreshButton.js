@@ -75,8 +75,9 @@ export default function RefreshButton() {
       }
       // If first attempt failed, wait 15 seconds and retry (Render cold start workaround)
       if (!success) {
-        toast.info('API is waking up, will retry in 15 seconds…');
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // toast.info('API is waking up, will retry in 1 minute…');
+        toast.info('Updating contests... The updated list may take a minute to show. Please wait.');
+        await new Promise(resolve => setTimeout(resolve, 60000));
         try {
           const res = await updateContests();
           toast.success(res.message || 'Contests updated successfully');
@@ -87,7 +88,7 @@ export default function RefreshButton() {
         }
       }
       if (!success) {
-        toast.error('Failed to refresh contests. Please try again.');
+        toast.error('Failed to refresh contests. Please try again later.');
       }
     });
   };

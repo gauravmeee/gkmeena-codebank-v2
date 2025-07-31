@@ -77,8 +77,9 @@ export default function RefreshButton() {
       }
       // If first attempt failed, wait 15 seconds and retry (Render cold start workaround)
       if (!success) {
-        toast.info('API is waking up, will retry in 15 seconds…');
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // toast.info('API is waking up, will retry in 15 seconds…');
+        toast.info('Updating Jobs... The updated list may take a minute to show. Please wait.');
+        await new Promise(resolve => setTimeout(resolve, 60000));
         try {
           const res = await updateJobs();
           toast.success(res.message || 'Jobs updated successfully');
@@ -89,7 +90,7 @@ export default function RefreshButton() {
         }
       }
       if (!success) {
-        toast.error('Failed to refresh jobs. Please try again.');
+        toast.error('Failed to refresh jobs. Please try again later.');
       }
     });
   };
