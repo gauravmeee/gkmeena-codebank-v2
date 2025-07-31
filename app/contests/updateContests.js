@@ -26,7 +26,8 @@ export default async function updateContests() {
       }, { merge: true });
       // Always revalidate cache
       revalidateTag("contests");
-      return { message: isChanged ? "Contests updated and cache revalidated" : "No changes in contests data, but time updated" };
+      // return { message: isChanged ? "Contests updated and cache revalidated" : "No changes in contests data, but time updated" };
+      return { message: isChanged ? "Contests updated." : "No new contests." };
     } catch (error) {
       console.error("Failed to update Contests:", error);
       return { message: "Failed to update Contests" };

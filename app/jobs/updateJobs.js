@@ -26,7 +26,8 @@ export default async function updateJobs() {
     }, { merge: true });
     // Always revalidate cache
     revalidateTag("jobs");
-    return { message: isChanged ? "Jobs updated and cache revalidated" : "No changes in jobs data, but time updated" };
+    // return { message: isChanged ? "Jobs updated and cache revalidated" : "No changes in jobs data, but time updated" };
+    return { message: isChanged ? "Jobs updated." : "No new jobs." };
   } catch (error) {
     console.error("Failed to update jobs:", error);
     return { message: "Failed to update jobs" };
